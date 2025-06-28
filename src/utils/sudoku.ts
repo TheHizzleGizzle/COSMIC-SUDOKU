@@ -48,8 +48,28 @@ export const generateCompleteGrid = (): SudokuGrid => {
     return true;
   };
   
-  fillGrid(grid);
-  return grid;
+  // Try multiple times to generate a valid grid
+  let attempts = 0;
+  while (attempts < 10) {
+    const newGrid: SudokuGrid = Array(9).fill(null).map(() => Array(9).fill(null));
+    if (fillGrid(newGrid)) {
+      return newGrid;
+    }
+    attempts++;
+  }
+  
+  // Fallback: return a known valid Sudoku grid
+  return [
+    [5, 3, 4, 6, 7, 8, 9, 1, 2],
+    [6, 7, 2, 1, 9, 5, 3, 4, 8],
+    [1, 9, 8, 3, 4, 2, 5, 6, 7],
+    [8, 5, 9, 7, 6, 1, 4, 2, 3],
+    [4, 2, 6, 8, 5, 3, 7, 9, 1],
+    [7, 1, 3, 9, 2, 4, 8, 5, 6],
+    [9, 6, 1, 5, 3, 7, 2, 8, 4],
+    [2, 8, 7, 4, 1, 9, 6, 3, 5],
+    [3, 4, 5, 2, 8, 6, 1, 7, 9]
+  ];
 };
 
 // Generate a puzzle by removing numbers from a complete grid
@@ -87,6 +107,7 @@ export const generatePuzzle = (difficulty: 'easy' | 'medium' | 'hard' | 'expert'
     puzzle[row][col] = null;
   }
   
+  console.log(`Generated ${difficulty} puzzle with ${81 - cellsToRemove} clues`);
   return puzzle;
 };
 
