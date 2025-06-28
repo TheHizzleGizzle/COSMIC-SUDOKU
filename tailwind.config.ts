@@ -59,6 +59,18 @@ export default {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
+  			},
+  			// Cosmic theme colors
+  			cosmic: {
+  				'deep-space': '#0a0a1a',
+  				'space-blue': '#1a1b3a',
+  				'nebula-purple': '#2d3561',
+  				'stellar-cyan': '#00f5ff',
+  				'aurora-pink': '#ff6b9d',
+  				'galaxy-purple': '#c471ed',
+  				'stardust': '#ffd700',
+  				'meteor': '#ff4500',
+  				'void': '#0f0f23'
   			}
   		},
   		keyframes: {
@@ -77,14 +89,34 @@ export default {
   				to: {
   					height: '0'
   				}
+  			},
+  			'twinkle': {
+  				'0%, 100%': { opacity: '0.3' },
+  				'50%': { opacity: '1' }
+  			},
+  			'float': {
+  				'0%, 100%': { transform: 'translateY(0px)' },
+  				'50%': { transform: 'translateY(-10px)' }
+  			},
+  			'pulse-glow': {
+  				'0%, 100%': { 
+  					boxShadow: '0 0 5px rgba(0, 245, 255, 0.5)',
+  					transform: 'scale(1)' 
+  				},
+  				'50%': { 
+  					boxShadow: '0 0 20px rgba(0, 245, 255, 0.8)',
+  					transform: 'scale(1.05)' 
+  				}
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'twinkle': 'twinkle 2s ease-in-out infinite',
+  			'float': 'float 3s ease-in-out infinite',
+  			'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
   		}
   	}
   },
   plugins: [require("tailwindcss-animate")],
 }
-
