@@ -101,6 +101,8 @@ export const useGameState = () => {
   const [mistakes, setMistakes] = useState<number>(0);
   const [hintsUsed, setHintsUsed] = useState<number>(0);
   const [isGameComplete, setIsGameComplete] = useState<boolean>(false);
+  const [timeFrozenUntil, setTimeFrozenUntil] = useState<number>(0);
+  const [errorShieldActive, setErrorShieldActive] = useState<boolean>(false);
 
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -130,9 +132,14 @@ export const useGameState = () => {
       const newGrid = prevGrid.map(r => r.map(cell => ({ ...cell })));
       newGrid[row][col].value = value;
       newGrid[row][col].isValid = validateCell(newGrid, row, col);
-      
+
       if (!newGrid[row][col].isValid && value !== null) {
-        setMistakes(prev => prev + 1);
+        if (errorShieldActive) {
+          // Shield absorbs the error
+          setErrorShieldActive(false);
+        } else {
+          setMistakes(prev => prev + 1);
+        }
       }
 
       // Check if puzzle is complete
@@ -236,6 +243,8 @@ export const useGameState = () => {
     setMistakes(0);
     setHintsUsed(0);
     setIsGameComplete(false);
+    setTimeFrozenUntil(0);
+    setErrorShieldActive(false);
     console.log(`Starting new game - Level: ${stats.level}, Difficulty: ${difficulty}`);
   }, [stats.level]);
 
@@ -244,15 +253,118 @@ export const useGameState = () => {
     startNewGame();
   }, [startNewGame]);
 
+  // Get valid candidate numbers for a cell
+  const getCandidates = useCallback((row: number, col: number): number[] => {
+    const candidates: number[] = [];
+    for (let num = 1; num <= 9; num++) {
+      // Create a temporary grid to test this number
+      const testGrid = grid.map(r => r.map(cell => ({ ...cell })));
+      testGrid[row][col].value = num;
+      if (validateCell(testGrid, row, col)) {
+        candidates.push(num);
+      }
+    }
+    return candidates;
+  }, [grid]);
+
+  // Use a power-up
+  const usePowerUp = useCallback((powerUpId: string, selectedCell: { row: number; col: number } | null): { success: boolean; message: string; candidates?: number[] } => {
+    const powerUp = powerUps.find(p => p.id === powerUpId);
+    if (!powerUp || powerUp.quantity <= 0) {
+      return { success: false, message: 'Power-up not available!' };
+    }
+
+    // Decrement quantity
+    setPowerUps(prevPowerUps =>
+      prevPowerUps.map(p => p.id === powerUpId ? { ...p, quantity: Math.max(0, p.quantity - 1) } : p)
+    );
+
+    switch (powerUpId) {
+      case 'stellar-hint': {
+        if (!selectedCell || grid[selectedCell.row][selectedCell.col].isFixed) {
+          return { success: false, message: 'Select an empty cell first!' };
+        }
+        const candidates = getCandidates(selectedCell.row, selectedCell.col);
+        setHintsUsed(prev => prev + 1);
+        if (candidates.length === 0) {
+          return { success: true, message: 'This cell has no valid candidates!', candidates: [] };
+        }
+        return {
+          success: true,
+          message: `Possible numbers: ${candidates.join(', ')}`,
+          candidates
+        };
+      }
+
+      case 'cosmic-reveal': {
+        // Find all empty cells
+        const emptyCells: { row: number; col: number }[] = [];
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            if (!grid[row][col].isFixed && grid[row][col].value === null) {
+              emptyCells.push({ row, col });
+            }
+          }
+        }
+
+        if (emptyCells.length === 0) {
+          return { success: false, message: 'No empty cells to reveal!' };
+        }
+
+        // Pick a random empty cell and fill it with correct answer
+        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        const candidates = getCandidates(randomCell.row, randomCell.col);
+
+        if (candidates.length > 0) {
+          // Pick the first valid candidate (or random one)
+          const correctNumber = candidates[Math.floor(Math.random() * candidates.length)];
+          updateCell(randomCell.row, randomCell.col, correctNumber);
+          return { success: true, message: `Revealed a number at row ${randomCell.row + 1}, col ${randomCell.col + 1}!` };
+        }
+
+        return { success: false, message: 'Could not find a valid number to reveal!' };
+      }
+
+      case 'time-freeze': {
+        setTimeFrozenUntil(Date.now() + 30000); // 30 seconds
+        return { success: true, message: 'Time frozen for 30 seconds!' };
+      }
+
+      case 'error-shield': {
+        setErrorShieldActive(true);
+        return { success: true, message: 'Error shield activated! Next mistake will be ignored.' };
+      }
+
+      default:
+        return { success: false, message: 'Unknown power-up!' };
+    }
+  }, [powerUps, grid, getCandidates, updateCell]);
+
   const buyTheme = useCallback((themeId: string) => {
     const theme = themes.find(t => t.id === themeId);
     if (!theme || theme.unlocked || stats.stardust < theme.cost) return false;
 
     setStats(prevStats => ({ ...prevStats, stardust: prevStats.stardust - theme.cost }));
-    setThemes(prevThemes => 
-      prevThemes.map(t => t.id === themeId ? { ...t, unlocked: true } : t)
-    );
-    
+    setThemes(prevThemes => {
+      const updatedThemes = prevThemes.map(t => t.id === themeId ? { ...t, unlocked: true } : t);
+
+      // Check Cosmic Collector achievement
+      const unlockedCount = updatedThemes.filter(t => t.unlocked).length;
+      if (unlockedCount >= 3) {
+        setAchievements(prevAchievements => {
+          const updatedAchievements = [...prevAchievements];
+          const achievement = updatedAchievements.find(a => a.id === 'collector');
+          if (achievement && !achievement.unlocked) {
+            achievement.unlocked = true;
+            achievement.unlockedAt = new Date();
+          }
+          return updatedAchievements;
+        });
+      }
+
+      return updatedThemes;
+    });
+
     return true;
   }, [themes, stats.stardust]);
 
@@ -280,13 +392,17 @@ export const useGameState = () => {
     hintsUsed,
     isGameComplete,
     gameStartTime,
-    
+    timeFrozenUntil,
+    errorShieldActive,
+
     // Actions
     updateCell,
     startNewGame,
     nextLevel,
     buyTheme,
     buyPowerUp,
+    usePowerUp,
+    getCandidates,
     setCurrentTheme,
   };
 };
