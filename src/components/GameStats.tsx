@@ -10,6 +10,7 @@ interface GameStatsProps {
   mistakes: number;
   hintsUsed: number;
   isGameComplete: boolean;
+  timeFrozenUntil?: number;
   theme: {
     primary: string;
     secondary: string;
@@ -17,25 +18,43 @@ interface GameStatsProps {
   };
 }
 
-const GameStats: React.FC<GameStatsProps> = ({ 
-  stats, 
-  gameStartTime, 
-  mistakes, 
-  hintsUsed, 
+const GameStats: React.FC<GameStatsProps> = ({
+  stats,
+  gameStartTime,
+  mistakes,
+  hintsUsed,
   isGameComplete,
-  theme 
+  timeFrozenUntil = 0,
+  theme
 }) => {
   const [currentTime, setCurrentTime] = useState(0);
+  const [frozenTime, setFrozenTime] = useState<number | null>(null);
 
   useEffect(() => {
     if (isGameComplete) return;
-    
+
     const interval = setInterval(() => {
-      setCurrentTime(Math.floor((Date.now() - gameStartTime) / 1000));
-    }, 1000);
+      const now = Date.now();
+
+      // Check if time is currently frozen
+      if (timeFrozenUntil > now) {
+        // Time is frozen - save the frozen time if not already saved
+        if (frozenTime === null) {
+          setFrozenTime(Math.floor((now - gameStartTime) / 1000));
+        }
+        // Keep showing the frozen time
+        setCurrentTime(frozenTime || Math.floor((now - gameStartTime) / 1000));
+      } else {
+        // Time is not frozen - clear frozen time and update normally
+        if (frozenTime !== null) {
+          setFrozenTime(null);
+        }
+        setCurrentTime(Math.floor((now - gameStartTime) / 1000));
+      }
+    }, 100); // Check more frequently to catch freeze start/end
 
     return () => clearInterval(interval);
-  }, [gameStartTime, isGameComplete]);
+  }, [gameStartTime, isGameComplete, timeFrozenUntil, frozenTime]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -102,6 +121,9 @@ const GameStats: React.FC<GameStatsProps> = ({
             <div className="text-2xl font-bold text-white">
               {formatTime(currentTime)}
             </div>
+            {timeFrozenUntil > Date.now() && (
+              <div className="text-xs text-blue-400 mt-1">⏸️ Frozen</div>
+            )}
           </CardContent>
         </Card>
       </div>

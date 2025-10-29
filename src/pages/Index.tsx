@@ -55,6 +55,70 @@ const Index = () => {
     }
   }, [gameState.isGameComplete, showCelebration, gameState.gameStartTime]);
 
+  // Keyboard support
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle keys when modals are open or game is complete
+      if (showAchievements || showThemes || showPowerUps || showCelebration || gameState.isGameComplete) {
+        return;
+      }
+
+      // Number keys (1-9)
+      if (e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const number = parseInt(e.key);
+        handleNumberSelect(number);
+        return;
+      }
+
+      // Backspace or Delete to clear
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        handleNumberSelect(null);
+        return;
+      }
+
+      // Arrow keys for navigation
+      if (!selectedCell) {
+        // If no cell selected, select center cell
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+          e.preventDefault();
+          setSelectedCell({ row: 4, col: 4 });
+        }
+        return;
+      }
+
+      let newRow = selectedCell.row;
+      let newCol = selectedCell.col;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          newRow = Math.max(0, selectedCell.row - 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          newRow = Math.min(8, selectedCell.row + 1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          newCol = Math.max(0, selectedCell.col - 1);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          newCol = Math.min(8, selectedCell.col + 1);
+          break;
+      }
+
+      if (newRow !== selectedCell.row || newCol !== selectedCell.col) {
+        setSelectedCell({ row: newRow, col: newCol });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCell, gameState.isGameComplete, showAchievements, showThemes, showPowerUps, showCelebration]);
+
   const handleCellClick = (row: number, col: number) => {
     if (gameState.grid[row][col].isFixed) return;
     setSelectedCell({ row, col });
@@ -83,36 +147,17 @@ const Index = () => {
   };
 
   const handleUsePowerUp = (powerUpId: string) => {
-    // Here you would implement the actual power-up logic
-    // For now, we'll just show a toast and decrement the quantity
-    console.log(`Using power-up: ${powerUpId}`);
-    
-    // Find the power-up and use it
-    const powerUp = gameState.powerUps.find(p => p.id === powerUpId);
-    if (powerUp && powerUp.quantity > 0) {
-      // Implement power-up effects here
-      switch (powerUpId) {
-        case 'stellar-hint':
-          // Show hint for selected cell
-          if (selectedCell) {
-            toast.info("💡 This cell could be a 3, 7, or 9!");
-          } else {
-            toast.info("💡 Select a cell first to get a hint!");
-          }
-          break;
-        case 'cosmic-reveal':
-          // Reveal a random empty cell
-          toast.info("✨ A number has been revealed!");
-          break;
-        case 'time-freeze':
-          // Pause timer (would need timer implementation)
-          toast.info("⏸️ Time frozen for 30 seconds!");
-          break;
-        case 'error-shield':
-          // Prevent next mistake
-          toast.info("🛡️ Error shield activated!");
-          break;
+    const result = gameState.usePowerUp(powerUpId, selectedCell);
+
+    if (result.success) {
+      toast.success(result.message);
+
+      // Show candidates for stellar hint
+      if (powerUpId === 'stellar-hint' && result.candidates && result.candidates.length > 0) {
+        toast.info(`💡 Possible numbers: ${result.candidates.join(', ')}`);
       }
+    } else {
+      toast.error(result.message);
     }
   };
 
@@ -150,12 +195,13 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Stats & Mascot */}
           <div className="space-y-6">
-            <GameStats 
+            <GameStats
               stats={gameState.stats}
               gameStartTime={gameState.gameStartTime}
               mistakes={gameState.mistakes}
               hintsUsed={gameState.hintsUsed}
               isGameComplete={gameState.isGameComplete}
+              timeFrozenUntil={gameState.timeFrozenUntil}
               theme={currentThemeData.colors}
             />
             
@@ -408,11 +454,13 @@ const Index = () => {
               <CardContent>
                 <ul className="text-sm text-white/80 space-y-2">
                   <li>• Click a cell, then select a number</li>
+                  <li>• Use arrow keys to navigate cells</li>
+                  <li>• Press 1-9 to enter numbers</li>
+                  <li>• Backspace/Delete to clear cells</li>
                   <li>• Use power-ups strategically</li>
                   <li>• Complete puzzles to earn stardust</li>
                   <li>• Unlock new themes and power-ups</li>
                   <li>• Maintain streaks for bonus rewards</li>
-                  <li>• Each level increases difficulty</li>
                 </ul>
               </CardContent>
             </Card>
