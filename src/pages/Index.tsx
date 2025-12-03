@@ -43,11 +43,9 @@ const Index = () => {
       const difficulty = gameState.stats.level <= 10 ? 'easy' : 
                         gameState.stats.level <= 25 ? 'medium' : 
                         gameState.stats.level <= 50 ? 'hard' : 'expert';
-      
       // Calculate rewards (simplified)
       const earnedScore = Math.round(1000 * (difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : difficulty === 'hard' ? 2 : 2.5));
       const stardustEarned = Math.floor(earnedScore / 10);
-      
       setLastScore(earnedScore);
       setLastStardust(stardustEarned);
       setLastTime(timeInSeconds);
@@ -58,60 +56,64 @@ const Index = () => {
   // Keyboard support
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle keys when modals are open or game is complete
-      if (showAchievements || showThemes || showPowerUps || showCelebration || gameState.isGameComplete) {
-        return;
-      }
-
-      // Number keys (1-9)
-      if (e.key >= '1' && e.key <= '9') {
-        e.preventDefault();
-        const number = parseInt(e.key);
-        handleNumberSelect(number);
-        return;
-      }
-
-      // Backspace or Delete to clear
-      if (e.key === 'Backspace' || e.key === 'Delete') {
-        e.preventDefault();
-        handleNumberSelect(null);
-        return;
-      }
-
-      // Arrow keys for navigation
-      if (!selectedCell) {
-        // If no cell selected, select center cell
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-          e.preventDefault();
-          setSelectedCell({ row: 4, col: 4 });
+      try {
+        // Don't handle keys when modals are open or game is complete
+        if (showAchievements || showThemes || showPowerUps || showCelebration || gameState.isGameComplete) {
+          return;
         }
-        return;
-      }
 
-      let newRow = selectedCell.row;
-      let newCol = selectedCell.col;
+        // Number keys (1-9)
+        if (e.key >= '1' && e.key <= '9') {
+          e.preventDefault();
+          const number = parseInt(e.key);
+          handleNumberSelect(number);
+          return;
+        }
 
-      switch (e.key) {
-        case 'ArrowUp':
+        // Backspace or Delete to clear
+        if (e.key === 'Backspace' || e.key === 'Delete') {
           e.preventDefault();
-          newRow = Math.max(0, selectedCell.row - 1);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          newRow = Math.min(8, selectedCell.row + 1);
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          newCol = Math.max(0, selectedCell.col - 1);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          newCol = Math.min(8, selectedCell.col + 1);
-          break;
-      }
+          handleNumberSelect(null);
+          return;
+        }
 
-      if (newRow !== selectedCell.row || newCol !== selectedCell.col) {
-        setSelectedCell({ row: newRow, col: newCol });
+        // Arrow keys for navigation
+        if (!selectedCell) {
+          // If no cell selected, select center cell
+          if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            e.preventDefault();
+            setSelectedCell({ row: 4, col: 4 });
+          }
+          return;
+        }
+
+        let newRow = selectedCell.row;
+        let newCol = selectedCell.col;
+
+        switch (e.key) {
+          case 'ArrowUp':
+            e.preventDefault();
+            newRow = Math.max(0, selectedCell.row - 1);
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            newRow = Math.min(8, selectedCell.row + 1);
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            newCol = Math.max(0, selectedCell.col - 1);
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            newCol = Math.min(8, selectedCell.col + 1);
+            break;
+        }
+
+        if (newRow !== selectedCell.row || newCol !== selectedCell.col) {
+          setSelectedCell({ row: newRow, col: newCol });
+        }
+      } catch (error) {
+        console.error('Keyboard event handling error:', error instanceof Error ? error.message : String(error));
       }
     };
 
@@ -204,7 +206,6 @@ const Index = () => {
               timeFrozenUntil={gameState.timeFrozenUntil}
               theme={currentThemeData.colors}
             />
-            
             <CosmicMascot
               level={gameState.stats.level}
               mistakes={gameState.mistakes}
@@ -378,7 +379,6 @@ const Index = () => {
               selectedCell={selectedCell}
               theme={currentThemeData.colors}
             />
-            
             <NumberPad
               onNumberSelect={handleNumberSelect}
               theme={currentThemeData.colors}
