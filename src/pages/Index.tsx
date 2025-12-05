@@ -182,21 +182,23 @@ const Index = () => {
   const unlockedAchievements = gameState.achievements.filter(a => a.unlocked);
 
   return (
-    <div className="cosmic-bg min-h-screen p-4">
+    <div className="cosmic-bg min-h-screen p-2 sm:p-4">
       <div className="container mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-2 animate-float">
+        {/* Header - Compact on mobile */}
+        <div className="text-center mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold text-white mb-1 sm:mb-2 animate-float">
             🌌 Cosmic Sudoku 🌌
           </h1>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-sm sm:text-lg hidden sm:block">
             Explore infinite puzzles across the universe!
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Stats & Mascot */}
-          <div className="space-y-6">
+        {/* Mobile-first layout: Game board first, then stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* On mobile, show game board first (using order classes) */}
+          {/* Left Column - Stats & Mascot (hidden on mobile, shown on lg) */}
+          <div className="space-y-4 sm:space-y-6 order-2 lg:order-1">
             <GameStats
               stats={gameState.stats}
               gameStartTime={gameState.gameStartTime}

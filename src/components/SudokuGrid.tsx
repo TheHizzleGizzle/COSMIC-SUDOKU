@@ -61,27 +61,38 @@ const SudokuGrid: React.FC<SudokuGridProps> = ({ grid, onCellClick, selectedCell
   };
 
   return (
-    <div className="cosmic-tile p-4 rounded-2xl">
-      <div className="grid grid-cols-9 gap-0 w-full max-w-lg mx-auto aspect-square">
+    <div className="cosmic-tile p-2 sm:p-4 rounded-2xl">
+      <div 
+        className="grid grid-cols-9 gap-0 w-full mx-auto aspect-square"
+        style={{ maxWidth: 'min(100%, 420px)' }}
+        role="grid"
+        aria-label="Sudoku puzzle grid"
+      >
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
             const cellStyle = getCellStyle(rowIndex, colIndex, cell);
             const borderStyle = getBorderStyle(rowIndex, colIndex);
-            
+            const isSelected = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
+
             return (
-              <div
+              <button
                 key={`${rowIndex}-${colIndex}`}
-                className="number-tile cursor-pointer flex items-center justify-center text-lg font-bold transition-all duration-200 hover:scale-105"
+                className="number-tile cursor-pointer flex items-center justify-center text-sm sm:text-lg font-bold transition-all duration-200 active:scale-95 sm:hover:scale-105 touch-manipulation"
                 style={{
                   ...cellStyle,
                   ...borderStyle,
                   borderStyle: 'solid',
                   aspectRatio: '1',
+                  minWidth: '28px',
+                  minHeight: '28px',
                 }}
                 onClick={() => onCellClick(rowIndex, colIndex)}
+                aria-label={`Row ${rowIndex + 1}, Column ${colIndex + 1}, ${cell.value || 'empty'}${cell.isFixed ? ', fixed' : ''}`}
+                aria-selected={isSelected}
+                tabIndex={isSelected ? 0 : -1}
               >
                 {cell.value || ''}
-              </div>
+              </button>
             );
           })
         )}
