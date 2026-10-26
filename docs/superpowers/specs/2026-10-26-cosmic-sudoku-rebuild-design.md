@@ -3,15 +3,16 @@
 | | |
 |---|---|
 | **Date** | 2026-10-26 |
-| **Status** | Draft — awaiting owner review |
+| **Status** | Draft rev 2 — awaiting owner review |
+| **Revision** | Rev 2 (2026-10-26): the deliverable is now a signed, sideloadable **Android APK** built with Capacitor, requested by the owner after rev 1. Sections 2, 3, 5, 7–12 and Appendices D–E changed. |
 | **Branch** | `ccr-f3b683c3-r6qbqy` |
-| **Approach** | **B — engine-first rebuild, port the soul** |
+| **Approach** | **B — engine-first rebuild, port the soul**, packaged for Android with **Capacitor** |
 
 ## 1. Summary
 
 Cosmic Sudoku is a much-loved, vibe-coded game (React 18 + Vite 5 + Tailwind 3 + a shadcn template; about 2,000 lines of real game code). Several of its rules do not work, and the repo has no tests, no working deploy and no Claude Code setup.
 
-This spec rebuilds the foundation as a modern (2026), fully tested, offline-first PWA. It keeps everything that makes the game *this* game: the cosmic glass look, Cosmos the mascot, the stardust economy, power-ups, achievements, themes and infinite levels. It adds five features (notes, undo/redo, teaching hints, a daily puzzle, stats and history) and sets the repository up so Claude Code can keep evolving it safely.
+This spec rebuilds the foundation as a modern (2026), fully tested, offline-first app, delivered as a signed **Android APK** (Capacitor wraps the web build). The same build is also published as a web app and PWA. It keeps everything that makes the game *this* game: the cosmic glass look, Cosmos the mascot, the stardust economy, power-ups, achievements, themes and infinite levels. It adds five features (notes, undo/redo, teaching hints, a daily puzzle, stats and history) and sets the repository up so Claude Code can keep evolving it safely.
 
 Implementation has not started. Nothing in `src/` has been changed.
 
@@ -24,15 +25,18 @@ Implementation has not started. Nothing in `src/` has been changed.
 3. **New features.** Notes, undo/redo, teaching hints, daily puzzle, stats and history.
 4. **Modern and minimal.** A 2026 stack, and only dependencies that earn their place.
 5. **Claude Code–native.** `CLAUDE.md`, path-scoped rules, hooks, skills, a subagent and CI that let Claude work safely.
-6. **Installable, offline, accessible, fast** on low-end phones.
+6. **Offline, accessible, fast** on low-end phones.
+7. **A fully functional Android APK**: signed with a stable key, installable by sideloading, working entirely offline, and built and released by CI.
 
 ### Non-goals
 
 - Backend, accounts, cloud sync or leaderboards. Daily puzzle and stats are local to each device.
 - AI features inside the game.
-- Native (Expo) apps. The engine is framework-free, so it stays portable if that is ever wanted.
+- A React Native/Expo rewrite, or iOS. Capacitor wraps the web build, and the framework-free engine stays portable if that is ever wanted.
+- A Google Play listing. The owner chose sideloading. Signing and versioning do not preclude an AAB later.
+- Push or local notifications.
 - i18n. User-facing strings are centralised in `content/` to make it possible later.
-- Sound or haptics.
+- Sound. Light haptics are included on Android as a setting.
 - Other grid sizes or Sudoku variants.
 - A light mode. The game is dark-only by design.
 - Resolving concurrent play in two tabs. The last write wins.
@@ -41,7 +45,7 @@ Implementation has not started. Nothing in `src/` has been changed.
 
 | # | Criterion |
 |---|---|
-| SC1 | The game installs as a PWA and a full puzzle is playable offline with no scrolling at 390×844. |
+| SC1 | The signed APK installs on Android 7+ (API 24+), and a full puzzle is playable offline with no scrolling at 390×844. The web build installs as a PWA. |
 | SC2 | `pnpm check` passes in CI. `engine/` and `game/` have ≥95% line and ≥90% branch coverage. |
 | SC3 | Property tests show every generated puzzle has exactly one solution and is solvable by its tier's techniques: 200 seeds per tier in CI, 1,000 per tier via `audit:puzzles`. |
 | SC4 | The Daily puzzle for 60 golden dates is identical in Chromium, Firefox and WebKit. |
@@ -50,6 +54,9 @@ Implementation has not started. Nothing in `src/` has been changed.
 | SC7 | Pages deploys from `main`. An e2e test asserts zero third-party network requests. |
 | SC8 | A fresh Claude Code cloud session runs `pnpm check` with no manual steps after the SessionStart hook. `CLAUDE.md` is under 200 lines. |
 | SC9 | Initial JS is ≤150 kB gzip, enforced as a build budget (re-measured in phase 1). |
+| SC10 | The release APK is ≤12 MB (re-measured in phase 1), requests no `INTERNET` permission if phase 0 confirms the app works without it, and installs over the previous version (stable signature). |
+| SC11 | Dispatching the release workflow produces a signed APK and a SHA-256 checksum on a GitHub Release. |
+| SC12 | An emulator smoke test in CI installs the APK, launches it, reaches the ready marker, force-stops it, and relaunches into the resumed puzzle. |
 
 Performance targets to validate in phase 2 and adjust with evidence: puzzle generation p95 under 100 ms for Easy and Medium, and under 400 ms for Hard and Expert, inside the worker. A bundled starter pool covers the rest.
 
@@ -61,7 +68,9 @@ Performance targets to validate in phase 2 and adjust with evidence: puzzle gene
 | Approach | **B**, engine-first rebuild porting the soul | Proposed with "proceeding with B unless you say otherwise"; not contested |
 | New features | Notes and undo/redo; hints that teach; Daily Cosmic puzzle; stats and history | Owner chose all four |
 | Design sections 1–4 | Architecture; rules and features; experience; quality, Claude Code layer and rollout | Approved in chat |
-| Platform | Static web app and installable PWA on GitHub Pages | Assumption, not contested |
+| Platform | **Android APK** (Capacitor wrapper around the web build). The web/PWA build on GitHub Pages stays as a by-product. | Owner asked for "a fully functional .apk" after rev 1, correcting the PWA-only assumption |
+| APK approach | Capacitor 8, not Expo/React Native and not a Trusted Web Activity | Proposed with "going with 1 unless you say otherwise"; not contested |
+| Distribution | Sideloaded by the owner from GitHub Releases. No Google Play listing. | Owner chose |
 | SteerCode pieces | The injected script, `steercode-tagger`, `nixpacks.toml` and the e2b allowed hosts are removed | Assumption, not contested |
 | Defaults offered for overruling | Instant wrong-digit flagging; 25-point mistake cost; 10-entry abandon rule; weekday-ramped dailies; undo never refunds | Not overruled |
 
@@ -73,7 +82,10 @@ Performance targets to validate in phase 2 and adjust with evidence: puzzle gene
 | Custom font | Yes: one self-hosted rounded variable font (Nunito, OFL, latin subset) with tabular digits. |
 | React Compiler | Off. The UI is tiny. Revisit with measurements. |
 | `@claude` GitHub Action | Included but inert until the owner installs the Claude GitHub App and adds a secret. |
-| GitHub Pages source | Must be "GitHub Actions" in repository settings. Only the owner can set it. |
+| GitHub Pages source | Must be "GitHub Actions" in repository settings (for the web build). Only the owner can set it. |
+| Android app id | `io.github.thehizzlegizzle.cosmicsudoku`. It is permanent once installed: changing it later creates a different app. |
+| Signing passphrase | The owner adds one repository secret, `ANDROID_SIGNING_PASSPHRASE` (a long random string kept in a password manager), and runs the key-creation workflow once (Appendix E). |
+| In-session APK builds (optional) | The cloud environment blocks `dl.google.com`, which hosts the Android SDK, so CI builds the APK. To also build inside Claude sessions, the owner allows that host in the environment's Network access (§12 item 15). |
 
 ## 4. Current-state audit
 
@@ -125,6 +137,7 @@ The cosmic glass look (deep-space gradient, translucent "bubble" tiles, twinklin
 
 ```
 ui/            React, thin: renders state, sends actions, wires the pieces together
+ ├─▶ platform/     web and Android adapters: storage, lifecycle, back button, haptics, share
  ├─▶ game/         pure reducers: (state, action) → { state, events }
  │     └─▶ engine/     pure Sudoku: generate · solve · grade · explain
  └─▶ persistence/  versioned, validated saves (knows the shape of game state)
@@ -137,6 +150,7 @@ Dependencies point down only.
 - `game/` imports `engine/` and `content/` (it needs prices and definitions at runtime).
 - `persistence/` imports `game/` and `content/` types (for state shape and ids). Storage is injected as a `KeyValueStore` interface, so the logic runs headless.
 - `content/` is data with no logic.
+- `platform/` is the only place that imports Capacitor. It exposes small interfaces (`KeyValueStore`, `Lifecycle`, `Haptics`, `Share`) with a web and an Android implementation, chosen once at startup. `main.tsx` and `ui/` use it. The core never does.
 - `ui/` and `worker/` may import everything below them.
 
 **Enforcement is mechanical, not a convention:**
@@ -150,17 +164,20 @@ Dependencies point down only.
 cosmic-sudoku/
 ├─ CLAUDE.md
 ├─ .claude/            settings.json · rules/ · skills/ · agents/ · hooks/
-├─ .github/            workflows/{ci,deploy,claude}.yml · dependabot.yml
+├─ .github/            workflows/{ci,deploy,release,android-keygen,claude}.yml · dependabot.yml
 ├─ docs/               engine-tour.md · claude-code.md · adr/ · reference/ · superpowers/{specs,plans}/
 ├─ e2e/                Playwright specs and snapshots
-├─ scripts/            audit-puzzles.ts · gen-starter-pool.ts · check-contrast.ts · gen-icons
+├─ scripts/            audit-puzzles.ts · gen-starter-pool.ts · check-contrast.ts · gen-icons · android-version.ts
 ├─ public/             generated icons, robots.txt
+├─ android/            Capacitor Android project (committed): manifest, icons, splash, backup rules, signing/ (encrypted key)
+├─ capacitor.config.ts
 └─ src/
    ├─ engine/          grid · rng · solver · techniques/ · grader · generator · hints · validate
    ├─ game/            state · actions · reduce · scoring · powerups · achievements · profile · levels · store
    ├─ persistence/     schema · migrate · legacy-v1 · storage
    ├─ content/         themes · powerups · achievements · cosmos · techniques
    ├─ worker/          generator.worker.ts · client.ts
+   ├─ platform/        storage · lifecycle · haptics · share · webview-guard (web and Android adapters)
    ├─ ui/              App · board/ · pad/ · hud/ · cosmos/ · screens/{Play,Daily,Stats,Shop} · dialogs/ · hooks/ · styles/
    └─ main.tsx
 ```
@@ -226,10 +243,12 @@ A pure reducer: `reduce(state, action): { state, events }`.
   ```
 - **Ids and numbers only.** Names, icons and prices live in `content/`, so adding content never needs a migration.
 - **Corruption policy.** An unreadable or invalid document is moved to `cosmic-sudoku:corrupt:<timestamp>` and the app starts fresh with a one-time notice. It never crashes.
-- **Autosave** on state change (debounced), on `visibilitychange` to hidden, and on `pagehide`. The in-progress board, notes and undo history (capped at 500 entries) are saved, so a refresh resumes exactly.
+- **Autosave** on state change (debounced), on `visibilitychange` to hidden, on `pagehide`, and on Android's app-paused event. The in-progress board, notes and undo history (capped at 500 entries) are saved, so a refresh or an Android process kill resumes exactly.
 - **Legacy import.** On first launch, if v2 is absent and v1 keys exist, they are mapped by id (Appendix A). Legacy keys are left untouched (a read-only import).
 - **Storage failure** (quota, private mode) falls back to in-memory play with a one-time warning.
-- **Export and import** of the document as a JSON file, with import validated by the same schema. This is the safety net for local-only progress.
+- **Async storage.** `KeyValueStore` is promise-based (`get`, `set`, `remove`) because Android's native store is asynchronous. Boot is async: the native splash stays up while the document loads and validates, then the first screen renders. The web build uses a `localStorage` adapter. The Android build uses Capacitor Preferences (SharedPreferences), so progress lives in native storage rather than WebView data.
+- **Backup.** Android Auto Backup is enabled with rules that include the Preferences file, so progress survives reinstalling or moving to a new phone.
+- **Export and import** of the document as a JSON file, with import validated by the same schema. On Android, export writes a temporary file and opens the native share sheet, and import uses the system file picker. This is the safety net for local-only progress.
 - **History** is capped at the last 200 games. Lifetime counters live separately so trimming loses nothing.
 
 ### 5.6 Worker and puzzle supply (`src/worker/`)
@@ -246,7 +265,7 @@ A root error boundary offers "Reset this puzzle" and "Export save". Storage, wor
 
 ### 5.8 Dependency policy
 
-- **Runtime:** `react`, `react-dom`, `zod`, `lucide-react`, and the optional font package.
+- **Runtime:** `react`, `react-dom`, `zod`, `lucide-react`, the optional font package, and the Capacitor core and first-party plugins the app uses (`@capacitor/core`, `app`, `preferences`, `haptics`, `status-bar`, `splash-screen`, `share`, `filesystem`). `@capacitor/cli` is a dev dependency.
 - **Everything else needs an ADR.** `knip` fails CI on unused dependencies, exports or files, so dead weight cannot creep back.
 - Radix and shadcn are not carried over. Dialogs and tooltips use native `<dialog>` and the Popover API, which are Baseline in 2026.
 
@@ -372,12 +391,15 @@ The Stats screen shows:
 - All ambient motion (float, twinkle, glow, confetti) is disabled under `prefers-reduced-motion` or the in-app override. `forced-colors` and `prefers-contrast` are respected.
 - Pad, power-up and nav targets are ≥44 px. Board cells are as large as the viewport allows (≥24 px, per WCAG 2.5.8). Layout works at 320 px width and 200% zoom.
 - Dialogs use native `<dialog>` with focus trapping and return.
+- Automated axe checks run on the web build only. On Android, TalkBack behaviour (the WebView exposes the same ARIA tree) is verified by hand in phase 6.
 
 ### 7.4 Win celebration
 
 Dismissible with Esc, the backdrop or a button. It shows the stored, credited result. The board stays visible behind it and a **Next Level** button persists in the controls. Reduced-motion users get a static version.
 
-### 7.5 PWA and offline
+### 7.5 Web build: PWA and offline
+
+This section applies to the web build only. The APK bundles all of its assets, so the native build (`--mode native`) excludes the service worker, the manifest registration and the update prompt.
 
 - One SVG source generates icons: 192, 512, maskable, apple-touch 180, favicon. A new Cosmos emblem replaces the template mark.
 - The manifest has `id`, a relative `start_url` and `scope`, `display: standalone`, no orientation lock, token colours, `categories: ["games"]`, and screenshots captured by Playwright.
@@ -386,11 +408,24 @@ Dismissible with Esc, the backdrop or a button. It shows the stored, credited re
 - Updates use an in-app prompt ("New stars have arrived — Refresh"). It never reloads mid-puzzle, and the autosave makes updating safe.
 - **Zero third-party requests**: no analytics, no remote fonts, no injected scripts.
 
+### 7.6 Android app
+
+- **Identity:** name "Cosmic Sudoku", application id `io.github.thehizzlegizzle.cosmicsudoku`, and `versionName` and `versionCode` derived from the release tag (Appendix E). Orientation follows the system rotation setting, and the layout supports landscape.
+- **Icons and splash:** an adaptive icon (foreground and background layers) plus a monochrome layer for Android 13+ themed icons, generated from the same SVG emblem as the web icons. The Android 12+ splash screen uses the deep-space background token and stays up until saves have loaded.
+- **System bars:** edge-to-edge, which is required at target SDK 36. `viewport-fit=cover` with `env(safe-area-inset-*)` padding, light status-bar icons on the dark UI, and a transparent navigation bar.
+- **Back button:** closes the topmost dialog, then returns to the Play tab. From Play it minimises the app instead of exiting, which the autosave makes safe.
+- **Lifecycle:** when the app goes to the background the game pauses and autosaves. On return the clock resumes only if the Play screen shows a puzzle in progress. A killed process resumes from the autosave.
+- **Haptics** (a Settings toggle, on by default): a warning pulse on a mistake, a light tick on power-up use, and a success pattern on a win.
+- **Minimum WebView:** the design relies on modern CSS (Tailwind 4, `<dialog>`, the Popover API, `@starting-style`), but Capacitor's own default floor is Chrome 60. Phase 1 audits the CSS features actually used and sets `android.minWebViewVersion` accordingly (expected around Chrome 117). Below that, the app shows a friendly "Update Android System WebView" screen instead of a broken layout.
+- **Reduced motion:** Android's "Remove animations" setting should surface as `prefers-reduced-motion`. Phase 6 verifies this on a device.
+- **Permissions:** none requested. The `INTERNET` permission is removed from release builds if phase 0 confirms the app boots without it, which makes "fully offline" verifiable from the manifest.
+- **Differences from the web build:** storage adapter, share-sheet export, Back button, haptics, no service worker, and no update prompt (updating means installing a newer APK).
+
 ## 8. Quality, tooling, CI/CD, security
 
 ### 8.1 Toolchain (verified against the npm registry on 2026-10-26; see Appendix D)
 
-React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/vite`) · TypeScript 7 (native compiler) · Vitest 5 · fast-check 4 · Playwright · `@axe-core/playwright` · Biome 2 · knip 6 · vite-plugin-pwa 2 · Zod 4 · pnpm.
+React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/vite`) · TypeScript 7 (native compiler) · Vitest 5 · fast-check 4 · Playwright · `@axe-core/playwright` · Biome 2 · knip 6 · vite-plugin-pwa 2 · Zod 4 · pnpm · Capacitor 8.5 (Android) · JDK 21 · Gradle 8.14 · Android Gradle Plugin 8.13 · compileSdk and targetSdk 36 · minSdk 24.
 
 **Why Biome rather than ESLint.** `typescript-eslint` 8.72 supports only `typescript >=4.8.4 <6.1.0`, and the TypeScript 7 package ships a `tsc` binary with no JS API. `eslint-plugin-jsx-a11y` supports ESLint up to 9, while ESLint is at 10. Biome has no dependency on the TypeScript JS API and includes accessibility and React-hooks (`useExhaustiveDependencies`) rules. `tsc` on TS 7 provides type checking.
 
@@ -412,6 +447,10 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
 | `check` | `check:fast` → build (with bundle budget) → e2e |
 | `audit:puzzles` | regenerate N seeds per tier; report uniqueness, rating and clue histograms, timing |
 | `shots` | Playwright screenshots for README and manifest |
+| `build:native` | `vite build --mode native` (no service worker or PWA manifest) |
+| `android:sync` | `build:native` → `cap sync android` |
+| `android:debug` | `android:sync` → `./gradlew assembleDebug` (needs the Android SDK: CI, or a cloud session with SDK access) |
+| `android:release` | CI only: signed `assembleRelease` plus `apksigner verify` |
 
 ### 8.3 Test strategy
 
@@ -422,19 +461,23 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
   - Golden hashes freeze the daily sequence.
 - **Game:** scenario tests through the reducer. Each D-defect in §4.2 has a named regression test.
 - **Persistence:** schema validation, v1 → v2 migration from fixtures captured in phase 0, corruption and quota fallbacks.
-- **UI** (Playwright, real built app, Chromium locally; Chromium, Firefox and WebKit in CI):
+- **UI** (Playwright against the real built **web** app, which is the same code the APK wraps; Chromium locally, Chromium, Firefox and WebKit in CI):
   - Keyboard-only play-through; notes and undo; mobile and desktop viewports.
   - axe on every screen × 4 themes.
   - Reduced motion; offline reload through the service worker; manifest and installability checks.
   - The zero-third-party-requests assertion.
   - Visual snapshots of board, win dialog and shop at 390×844 and 1280×800 across themes.
 - **Contrast:** `scripts/check-contrast.ts` asserts AA for every foreground/background token pair per theme. Failing shades are adjusted, not the aesthetic.
+- **Android smoke test** (emulator, CI only; GitHub's Linux runners provide KVM): install the release APK, launch it, wait for the `cosmic:ready` marker in `logcat`, take a screenshot, force-stop it, relaunch it and wait for `cosmic:resumed`. A second run installs the previous build and updates over it, which checks the signature and `versionCode`. Android lint (`./gradlew lint`) also runs. No extra test framework is needed, because the checks use `adb`.
 - Coverage gates apply to `engine/` and `game/` only.
 
 ### 8.4 CI/CD
 
 - **`ci.yml`** runs on PRs and pushes: frozen-lockfile install → `check:fast` → build → e2e (Playwright report uploaded on failure).
-- **`deploy.yml`** runs on push to `main` and `workflow_dispatch`: build → `upload-pages-artifact` → `deploy-pages`. It replaces all three existing workflows, which are deleted.
+- **`deploy.yml`** runs on push to `main` and `workflow_dispatch`: build the web app → `upload-pages-artifact` → `deploy-pages`. It replaces all three existing workflows, which are deleted.
+- **`ci.yml` Android jobs:** a debug-APK build (uploaded as an artifact) when `src/`, `android/` or the Capacitor config change, and the emulator smoke test on `main`, on tags and on PRs labelled `android`. Gradle caches are keyed on the wrapper and lockfiles.
+- **`android-keygen.yml`** (manual, run once) creates the stable signing key (Appendix E).
+- **`release.yml`** (manual dispatch with a version) tags the commit, builds the signed release APK, verifies it, and publishes it with a SHA-256 checksum to a GitHub Release (Appendix E).
 - **`claude.yml`** is the optional `@claude` workflow. It is inert until the owner installs the Claude GitHub App and adds a secret.
 - All actions are pinned by commit SHA with least-privilege `permissions` and `concurrency` groups. Dependabot covers npm and github-actions with grouped weekly updates and a cooldown.
 - pnpm is configured to delay brand-new releases (`minimumReleaseAge`) and to block dependency install scripts except an allowlist. Exact option names are verified in phase 1.
@@ -444,6 +487,7 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
 
 - A strict CSP via `<meta http-equiv>`: `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'`.
 - No third-party origins. The CSP is injected into production builds only, because the dev server needs inline scripts for HMR.
+- Android release builds are non-debuggable and minified with R8. They have cleartext traffic disabled, no live-reload server URL and WebView debugging off. The signing key never appears in logs or chat (Appendix E).
 - Save import is schema-validated.
 - `.env*` stays gitignored. There is no secret in the client, because the game has no backend.
 
@@ -457,13 +501,17 @@ All conventions below were checked against the current Claude Code documentation
 | `.claude/rules/engine.md` | `paths: ["src/engine/**"]`: determinism, integer-only math, no DOM or React, bump `generatorVersion` on algorithm change. |
 | `.claude/rules/ui.md` | `paths: ["src/ui/**"]`: accessibility checklist, tokens only (no hard-coded colours), reduced-motion handling. |
 | `.claude/rules/tests.md` | `paths: ["**/*.test.ts", "e2e/**"]`: write the failing test first; name regression tests after the defect. |
-| `.claude/settings.json` | Committed (single-repo cloud sessions read it). Pre-approves `pnpm run/exec` and read-only `git` commands, denies `Read(./.env*)`, and registers the four hooks below. |
+| `.claude/rules/android.md` | `paths: ["android/**", "capacitor.config.ts"]`: never hand-edit synced output (`android/app/src/main/assets/public`, `capacitor.config.json`); run `pnpm android:sync` after web changes; the application id never changes; `versionCode` only ever increases; never print or commit key material. |
+| `.claude/settings.json` | Committed (single-repo cloud sessions read it). Pre-approves `pnpm run/exec` and read-only `git` commands, denies reads of `.env*`, `*.keystore` and `*.jks`, and registers the four hooks below. |
 | `.claude/hooks/*.mjs` | Node scripts (no `jq` dependency). |
 | `.claude/skills/add-content/` | Add a theme, power-up or achievement, with its tests and docs. |
 | `.claude/skills/tune-difficulty/` | Run `audit:puzzles`, read the histograms, adjust the level/rating curve. |
 | `.claude/skills/verify-ui/` | Build, screenshot at phone and desktop, compare with `docs/reference/`. |
+| `.claude/skills/build-apk/` | Dispatch the CI APK build for the current branch, wait for it, report the artifact link, and on failure read the job logs and fix the cause. |
+| `.claude/skills/release/` | Cut a release: confirm `check` is green, dispatch `release.yml` with the version, verify the release asset and checksum, and put the sideload instructions in the release notes. |
 | `.claude/agents/puzzle-auditor.md` | Read-only subagent (`tools: Read, Grep, Glob, Bash`) that digests thousands of generated puzzles into a short report. |
 | `docs/claude-code.md` | How to work with Claude Code here, plus the owner's one-time `@claude` setup. |
+| `docs/android.md` | Sideloading on a phone, updating, how the signing key works and how to back it up, the WebView requirement, and the optional in-session build setup. |
 | `docs/engine-tour.md` | A learner-friendly guided tour of solvers, graders and hints. |
 | `docs/adr/` | Short decision records (engine-first, Biome and TS 7, ids-only saves, native dialogs). |
 
@@ -472,37 +520,44 @@ All conventions below were checked against the current Claude Code documentation
 | Event | Script | Behaviour |
 |---|---|---|
 | `SessionStart` (`startup\|resume`) | `setup.mjs` | Install dependencies if stale (cloud and local). Under `CLAUDE_CODE_REMOTE`, point Playwright at the preinstalled Chromium. |
-| `PreToolUse` (`Edit\|Write`) | `guard.mjs` | Block edits to `src/engine/golden/*` and hand-edits to the lockfile unless an override is set. Exit 2 with a reason. |
+| `PreToolUse` (`Edit\|Write`) | `guard.mjs` | Block edits to `src/engine/golden/*`, to `android/signing/**`, to any `*.jks` or `*.keystore` file, and hand-edits to the lockfile, unless an override is set. Exit 2 with a reason. |
 | `PostToolUse` (`Edit\|Write`) | `format.mjs` | Format the edited file (path from `tool_input.file_path`). Silent on success. |
 | `Stop` | `verify.mjs` | Run `check:fast`. On failure, write the tail to stderr and exit 2 so Claude keeps working. Loop-guarded so repeated failures cannot spin forever. |
+
+**Building APKs in a session.** The cloud environment blocks `dl.google.com` (the Android SDK host) by default, so CI builds the APK. If the owner allows that host, `scripts/android-sdk-setup.sh` installs the command-line SDK (platform 36 and matching build-tools), and `android:debug` then works inside a session. There is still no emulator, because cloud sessions have no KVM, so smoke tests stay in CI.
 
 Skills use `.claude/skills/<name>/SKILL.md` frontmatter (`name`, `description`, `allowed-tools`). `SKILL.md` files stay under 500 lines, with reference files for detail.
 
 ## 10. Rollout
 
-Each phase leaves `main` deployable and CI green. Work is committed on `ccr-f3b683c3-r6qbqy` and delivered through one draft PR.
+Each phase leaves `main` deployable and CI green, and from phase 1 onward each produces a CI-built APK the owner can install. **Phase 1 is merged to `main` as soon as it is green**, because Pages deployment and manually dispatched workflows only work from the default branch. Later phases land through their own PRs. Work is committed on `ccr-f3b683c3-r6qbqy` until each merge.
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
 | **0 Baseline** | Install old dependencies, build today's app, capture reference screenshots (phone and desktop, four themes) into `docs/reference/`, capture v1 save fixtures, run the Phase-0 checklist (§12). | Reference and fixtures committed; checklist answered. |
-| **1 Foundation** | Scaffold (Vite 8, TS 7, Tailwind 4, Biome, Vitest, Playwright, knip), CI, Pages deploy, `CLAUDE.md`, rules, hooks, settings. Ship an empty cosmic shell. | Shell live on Pages; `pnpm check` green in CI and cloud. |
+| **1 Foundation** | Scaffold (Vite 8, TS 7, Tailwind 4, Biome, Vitest, Playwright, knip, Capacitor and `android/`), CI, Pages deploy, signing-key creation, `CLAUDE.md`, rules, hooks, settings. Ship an empty cosmic shell **as both a web page and a signed APK**. | Shell live on Pages **and installed on the owner's phone from a CI-built APK**; `pnpm check` green in CI and cloud. |
 | **2 Engine** (test-first) | grid, rng, solver, generator, techniques, grader, hints, validate, audit script, starter pool, golden hashes. | SC3 and SC4 (Node) met; timing targets recorded. |
 | **3 Game + persistence** | Reducer, scoring, power-ups, notes, undo/redo, achievements, profile, store, schema, migration, export/import. | Every D-defect test green; SC5 met. |
 | **4 UI** | Board, pad, HUD, Cosmos, dialogs, tabs, themes, accessibility, worker wiring. Parity with the reference screenshots. | axe clean; visual snapshots accepted. |
 | **5 New features UI** | Daily, Stats, teaching-hint presentation, technique announcements. | Feature e2e green. |
-| **6 Hardening and polish** | PWA icons and manifest, offline and update flow, budgets, README with real screenshots, ADRs, engine tour, delete old code and workflows. | SC1, SC6–SC9 met. |
+| **6 Hardening and polish** | Web PWA icons, manifest and update flow. Android polish (adaptive icon, splash, Back button, lifecycle, haptics, WebView guard). Release workflow, emulator smoke test and update-over-install test. Budgets, README with real screenshots, `docs/android.md`, ADRs, engine tour, delete old code and workflows. | SC1, SC6–SC12 met. |
 
 **Planning note.** Seven phases is too large for one implementation plan, and later phases depend on measurements from earlier ones (generator timings, bundle size, toolchain behaviour). The default is **three plans**, each written after the previous group's exit criteria are met:
 
 | Plan | Phases | Why this boundary |
 |---|---|---|
-| A | 0–2 Baseline, Foundation, Engine | Retires the biggest risks (toolchain, generator) and ends with a deployed shell and a proven engine. |
+| A | 0–2 Baseline, Foundation, Engine | Retires the biggest risks (toolchain, Android pipeline and signing, generator) and ends with a deployed shell, an APK on the owner's phone, and a proven engine. |
 | B | 3–4 Game + persistence, UI | Built on the real engine API and measured timings. |
-| C | 5–6 New-feature UI, Hardening | Built on a working, accessible game. |
+| C | 5–6 New-feature UI, Hardening and release | Built on a working, accessible game, and ends with the first release APK. |
 
 The owner can ask for a single plan instead.
 
-**Owner one-time steps:** set Pages → Source to "GitHub Actions" if it is not already; optionally install the Claude GitHub App and add a secret for `@claude`.
+**Owner one-time steps:**
+1. Set Pages → Source to "GitHub Actions" if it is not already.
+2. Add the repository secret `ANDROID_SIGNING_PASSPHRASE` (a long random string, also saved in a password manager) and run the key-creation workflow once.
+3. On your phone, allow your browser or file manager to "Install unknown apps".
+4. Optionally install the Claude GitHub App and add a secret for `@claude`.
+5. Optionally allow `dl.google.com` in the environment's Network access so Claude can build APKs inside a session.
 
 **Deleted at the end:** the old `src/`, the three workflows, `nixpacks.toml`, `bun.lock`, `package-lock.json`, the SteerCode script, the placeholder icon and manifest, and unused config.
 
@@ -517,6 +572,12 @@ The owner can ask for a single plan instead.
 | Local-only data is lost. | Autosave, corruption quarantine, export/import, read-only legacy import. |
 | Visual snapshot churn between environments. | Tolerance threshold; CI is the baseline source; cloud runs treat visual diffs as warnings unless updating. |
 | Scope is large. | Phased delivery; each phase deployable; YAGNI enforced by the non-goals and knip. |
+| The Android SDK is unreachable from cloud sessions. | CI builds the APK (runners ship the SDK). Optionally allow `dl.google.com`. Nothing in the plan depends on in-session builds. |
+| An old Android System WebView breaks the modern CSS. | `minWebViewVersion` set from a CSS-feature audit, plus a friendly update screen below it. |
+| The signing key or its passphrase is lost, so new APKs cannot update installed ones. | Passphrase kept in a password manager; encrypted key in the repo; Auto Backup and export protect progress even if a reinstall is needed. `docs/android.md` explains this. |
+| Emulator tests are slow or flaky. | They run on `main`, tags and labelled PRs only, with one retry, and the smoke test checks markers rather than pixels. |
+| WebView performance on low-end phones. | Few `backdrop-filter` surfaces; a performance budget checked in the smoke test; reduced motion honoured. |
+| Capacitor ecosystem packages go stale (for example `@capacitor/assets`, last published 2024-03). | Use only first-party 8.x plugins and generate Android icons with our own script. |
 
 ## 12. Phase-0 verification checklist
 
@@ -530,6 +591,13 @@ These are facts to confirm by running things, with no decisions left open.
 6. Exact option names: pnpm `minimumReleaseAge`, Dependabot `cooldown`, and the Stop-hook loop-guard input field.
 7. The font subset size stays within the bundle budget.
 8. Old app baseline: build, screenshots and v1 save fixtures captured.
+9. The Android app boots and works with the `INTERNET` permission removed (Capacitor serves bundled assets locally).
+10. GitHub's Linux runners provide JDK 21, Android SDK 36 and KVM for an emulator job, and Gradle caching works.
+11. `vite build --mode native` produces a `dist/` that `cap sync android` accepts, with the PWA plugin disabled.
+12. The CSS-feature audit result sets `android.minWebViewVersion`.
+13. `@capacitor/assets` (last published 2024-03) either works with Capacitor 8 or is replaced by our own icon script.
+14. Informational: whether a Docker daemon can be started in the cloud container (the client is installed; no daemon is running).
+15. Optional: after the owner allows `dl.google.com`, `scripts/android-sdk-setup.sh` installs the SDK and `android:debug` builds inside a session.
 
 ## Appendix A — Legacy save mapping (v1 → v2)
 
@@ -597,3 +665,46 @@ A puzzle's tier is the highest rung its canonical solve (easiest-technique-first
 | pnpm | 12.15.0 latest | Container has 10.28.0 |
 | typescript-eslint | 8.72.0 | Peer `typescript >=4.8.4 <6.1.0` (reason for Biome) |
 | eslint-plugin-jsx-a11y | 6.10.2 | Peer ESLint up to 9 (reason for Biome) |
+| @capacitor/core, cli, android | 8.5.3 | CLI needs Node ≥22 |
+| @capacitor/app | 8.1.2 | Back button and lifecycle |
+| @capacitor/preferences | 8.0.1 | Native storage |
+| @capacitor/haptics | 8.0.2 | |
+| @capacitor/splash-screen | 8.0.2 | |
+| @capacitor/status-bar | 8.0.4 | |
+| @capacitor/share | 8.0.3 | Save export |
+| @capacitor/filesystem | 8.1.5 | Temporary export file |
+| @capacitor/assets | 3.0.5 | Last published 2024-03; treat as stale (§12 item 13) |
+| Capacitor 8 Android template | minSdk 24 · compileSdk 36 · targetSdk 36 · AGP 8.13.0 · Gradle 8.14.3 · JDK 21 | Read from the published `@capacitor/cli` package. The default WebView floor is Chrome 60. |
+| Cloud container | JDK 21.0.12 · Gradle 8.14.3 · no Android SDK · `dl.google.com` blocked · no `/dev/kvm` | Checked 2026-10-26 |
+
+## Appendix E — Android build, signing and release
+
+**Version scheme.** The git tag `vMAJOR.MINOR.PATCH` is the source of truth.
+- `versionName = MAJOR.MINOR.PATCH`.
+- `versionCode = MAJOR × 1,000,000 + MINOR × 1,000 + PATCH`, which strictly increases, so a newer build always installs over an older one.
+- `scripts/android-version.ts` computes both. Gradle reads them from environment variables and defaults to `0.0.0` and `1` for local builds.
+
+**Release manifest and Gradle decisions**
+- `android:debuggable=false`, R8 minification and resource shrinking on, `android:usesCleartextTraffic=false`.
+- No `INTERNET` permission if §12 item 9 passes.
+- `android:allowBackup=true`, with `dataExtractionRules` and `fullBackupContent` including the Capacitor Preferences file (confirmed in phase 1) and excluding caches.
+- `minSdk 24`, `compileSdk` and `targetSdk` 36, a universal APK with v2 and v3 signatures, and no `server.url` in the Capacitor config.
+- No `applicationIdSuffix` on debug builds, so any build installs over any other.
+
+**Signing key creation (once)**
+1. The owner adds the repository secret `ANDROID_SIGNING_PASSPHRASE`: a long random string saved in a password manager.
+2. The owner runs `android-keygen.yml` (manual). It creates a PKCS12 keystore with `keytool` (RSA 4096, 10,000-day validity) using random generated passwords. It bundles the keystore and passwords into one archive and encrypts it with `openssl enc -aes-256-cbc -pbkdf2` using the passphrase. It then pushes a branch, `chore/android-signing-key`, containing only the encrypted file `android/signing/release.enc`. Generated values are masked in the logs and never printed.
+3. After that branch is merged, every build decrypts the file inside the runner with the secret. Exact cipher parameters are fixed in the plan.
+4. Debug and release builds use the same key whenever the secret is available. GitHub withholds secrets from fork PRs, so fork builds use an ordinary debug key.
+
+**If the key is lost.** If the passphrase or the encrypted file is lost, the key cannot be recovered. New APKs would need a different key and could not update installed copies; the owner would uninstall and reinstall. Auto Backup and Export protect progress. `docs/android.md` explains how to back up the passphrase.
+
+**Release flow.** The owner, or the `/release` skill, dispatches `release.yml` with a `version`. The workflow:
+1. Checks out the commit and runs `check:fast`.
+2. Runs `build:native` and `cap sync android`.
+3. Decrypts the key and runs `./gradlew assembleRelease`.
+4. Aligns and signs the APK, and verifies it with `apksigner verify`.
+5. Writes `cosmic-sudoku-<version>.apk` and `SHA256SUMS`.
+6. Creates the tag and a GitHub Release with generated notes and the sideload instructions.
+
+**Sideloading (summarised for `docs/android.md`).** On the phone, open the Release in a browser, download the APK, and tap it. Allow "Install unknown apps" for that browser or file manager when asked, then install. To update, install a newer APK over the old one (same signature, higher `versionCode`). Progress is kept.
