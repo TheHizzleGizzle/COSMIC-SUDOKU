@@ -4,7 +4,7 @@
 |---|---|
 | **Date** | 2026-10-26 |
 | **Status** | Draft rev 2 — awaiting owner review |
-| **Revision** | Rev 2 (2026-10-26): the deliverable is now a signed, sideloadable **Android APK** built with Capacitor, requested by the owner after rev 1. Sections 2, 3, 5, 7–12 and Appendices D–E changed. |
+| **Revision** | Rev 2 (2026-10-26): the deliverable is now a signed, sideloadable **Android APK** built with Capacitor, requested by the owner after rev 1. Sections 2, 3, 5, 7–12 and Appendices D–E changed. Rev 2.1: two automated-review findings fixed (signing-secret isolation from PR builds; a deterministic, work-count generator budget). |
 | **Branch** | `ccr-f3b683c3-r6qbqy` |
 | **Approach** | **B — engine-first rebuild, port the soul**, packaged for Android with **Capacitor** |
 
@@ -84,7 +84,7 @@ Performance targets to validate in phase 2 and adjust with evidence: puzzle gene
 | `@claude` GitHub Action | Included but inert until the owner installs the Claude GitHub App and adds a secret. |
 | GitHub Pages source | Must be "GitHub Actions" in repository settings (for the web build). Only the owner can set it. |
 | Android app id | `io.github.thehizzlegizzle.cosmicsudoku`. It is permanent once installed: changing it later creates a different app. |
-| Signing passphrase | The owner adds one repository secret, `ANDROID_SIGNING_PASSPHRASE` (a long random string kept in a password manager), and runs the key-creation workflow once (Appendix E). |
+| Signing passphrase | The owner creates a GitHub environment `android-release` (deployment branches and tags limited to `main` and `v*`), adds one environment secret, `ANDROID_SIGNING_PASSPHRASE` (a long random string kept in a password manager), and runs the key-creation workflow once (Appendix E). |
 | In-session APK builds (optional) | The cloud environment blocks `dl.google.com`, which hosts the Android SDK, so CI builds the APK. To also build inside Claude sessions, the owner allows that host in the environment's Network access (§12 item 15). |
 
 ## 4. Current-state audit
@@ -196,11 +196,13 @@ Tests are colocated as `*.test.ts`. Scripts run directly under Node 22.18+ type 
 
 **Solver.** Constraint propagation (singles) plus DFS with minimum-remaining-values. It exposes `solve(board)` and `countSolutions(board, limit)`.
 
-**Generator.** `generatePuzzle({ seed, tier, ratingWindow?, budgetMs? }) → Puzzle`.
+**Generator.** `generatePuzzle({ seed, tier, ratingWindow?, workBudget? }) → Puzzle`.
 1. Fill a complete grid via seeded randomised DFS. This replaces today's biased `sort(() => Math.random() - 0.5)`.
 2. Remove cells in seeded order, keeping a removal only if `countSolutions === 1`.
-3. Grade the result. Accept it if its tier and rating window match. Otherwise continue or restart within `budgetMs`.
-4. Return the best in-tier candidate if the budget runs out. It is never non-unique and never out of tier.
+3. Grade the result. Accept it if its tier and rating window match. Otherwise continue or restart while the **work budget** lasts.
+4. If the budget runs out, return the best in-tier candidate found so far. It is never non-unique and never out of tier.
+
+**Determinism rule.** The work budget counts work (candidate attempts and solver nodes), never elapsed time, and the engine reads no clock. So the same `(seed, tier, ratingWindow, workBudget, generatorVersion)` yields the identical puzzle on every device, however fast. Wall-clock limits exist only in the client (§5.6) and never change the content of a puzzle the generator returns.
 
 A `generatorVersion` constant bumps on any algorithm change.
 
@@ -256,8 +258,8 @@ A pure reducer: `reduce(state, action): { state, events }`.
 - A Web Worker runs `generatePuzzle` through a small typed message protocol (`generate` → `result` | `error`).
 - The client pre-generates the next puzzle (for the next level and for a same-level replay) in the background, so Next Level is instant.
 - A **starter pool** of 40 vetted puzzles per tier, generated at build time by `scripts/gen-starter-pool.ts` from fixed seeds, ships in the bundle. It covers first load and worker failure.
-- Fallback chain: pre-generated → worker on demand → starter pool → main-thread generation under a short budget.
-- Daily puzzles use the same code path: seed → worker → cached in the save, with `generatorVersion` stored. A newer generator never changes a day's puzzle already in progress.
+- Fallback chain for level puzzles: pre-generated → worker on demand → (if the client's UI timeout passes) a starter-pool puzzle → main-thread generation with the same deterministic work budget. The UI timeout only decides *which* puzzle is served. It never alters a puzzle the generator returns.
+- Daily puzzles use the same code path: seed → worker → cached in the save, with `generatorVersion` stored. A newer generator never changes a day's puzzle already in progress. A Daily puzzle never falls back to the starter pool: a slow device simply waits ("Preparing today's puzzle…"), because the content must be identical everywhere.
 
 ### 5.7 Error handling
 
@@ -336,6 +338,7 @@ The grader finds the easiest logical step on the current board. The first time e
 - There is one resumable attempt per day. Winning grants +100 stardust and advances the daily streak.
 - Only today is playable. Past results appear in Stats.
 - Golden hashes for 60 fixed dates freeze the sequence as a contract (`src/engine/golden/daily.json`).
+- Generation uses the deterministic work budget (§5.3), so a slow phone computes exactly the same puzzle as a fast one, only later.
 
 ### 6.9 Stats and history
 
@@ -457,7 +460,7 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
 - **Engine** (Vitest, Node, no DOM): unit and property tests.
   - Every generated puzzle is uniquely solvable and solvable by its tier's techniques.
   - Every hint step is *sound*: its placements and eliminations agree with the solution.
-  - The same seed gives the same puzzle.
+  - The same seed gives the same puzzle regardless of device speed. A purity test scans `src/engine/` for `Math.random`, `Date`, `performance` and timers, so nothing time-dependent can enter the generator.
   - Golden hashes freeze the daily sequence.
 - **Game:** scenario tests through the reducer. Each D-defect in §4.2 has a named regression test.
 - **Persistence:** schema validation, v1 → v2 migration from fixtures captured in phase 0, corruption and quota fallbacks.
@@ -468,16 +471,16 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
   - The zero-third-party-requests assertion.
   - Visual snapshots of board, win dialog and shop at 390×844 and 1280×800 across themes.
 - **Contrast:** `scripts/check-contrast.ts` asserts AA for every foreground/background token pair per theme. Failing shades are adjusted, not the aesthetic.
-- **Android smoke test** (emulator, CI only; GitHub's Linux runners provide KVM): install the release APK, launch it, wait for the `cosmic:ready` marker in `logcat`, take a screenshot, force-stop it, relaunch it and wait for `cosmic:resumed`. A second run installs the previous build and updates over it, which checks the signature and `versionCode`. Android lint (`./gradlew lint`) also runs. No extra test framework is needed, because the checks use `adb`.
+- **Android smoke test** (emulator, CI only; GitHub's Linux runners provide KVM): install the **debug** APK built for the PR or `main`, launch it, wait for the `cosmic:ready` marker in `logcat`, take a screenshot, force-stop it, relaunch it and wait for `cosmic:resumed`. Inside the protected `release.yml`, an extra run installs the previous release asset and updates over it, which checks the signature and `versionCode`. Android lint (`./gradlew lint`) also runs. No extra test framework is needed, because the checks use `adb`.
 - Coverage gates apply to `engine/` and `game/` only.
 
 ### 8.4 CI/CD
 
 - **`ci.yml`** runs on PRs and pushes: frozen-lockfile install → `check:fast` → build → e2e (Playwright report uploaded on failure).
 - **`deploy.yml`** runs on push to `main` and `workflow_dispatch`: build the web app → `upload-pages-artifact` → `deploy-pages`. It replaces all three existing workflows, which are deleted.
-- **`ci.yml` Android jobs:** a debug-APK build (uploaded as an artifact) when `src/`, `android/` or the Capacitor config change, and the emulator smoke test on `main`, on tags and on PRs labelled `android`. Gradle caches are keyed on the wrapper and lockfiles.
-- **`android-keygen.yml`** (manual, run once) creates the stable signing key (Appendix E).
-- **`release.yml`** (manual dispatch with a version) tags the commit, builds the signed release APK, verifies it, and publishes it with a SHA-256 checksum to a GitHub Release (Appendix E).
+- **`ci.yml` Android jobs:** a debug-APK build (uploaded as an artifact) when `src/`, `android/` or the Capacitor config change, and the emulator smoke test on `main`, on tags and on PRs labelled `android`. Debug builds are signed with a fixed, public debug key and have no access to the release secret. Gradle caches are keyed on the wrapper and lockfiles.
+- **`android-keygen.yml`** (manual, run once, from `main`, in the protected `android-release` environment) creates the stable signing key (Appendix E).
+- **`release.yml`** (manual dispatch with a version, in the protected `android-release` environment) tags the commit, builds the signed release APK, verifies it, and publishes it with a SHA-256 checksum to a GitHub Release (Appendix E).
 - **`claude.yml`** is the optional `@claude` workflow. It is inert until the owner installs the Claude GitHub App and adds a secret.
 - All actions are pinned by commit SHA with least-privilege `permissions` and `concurrency` groups. Dependabot covers npm and github-actions with grouped weekly updates and a cooldown.
 - pnpm is configured to delay brand-new releases (`minimumReleaseAge`) and to block dependency install scripts except an allowlist. Exact option names are verified in phase 1.
@@ -488,6 +491,7 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
 - A strict CSP via `<meta http-equiv>`: `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'`.
 - No third-party origins. The CSP is injected into production builds only, because the dev server needs inline scripts for HMR.
 - Android release builds are non-debuggable and minified with R8. They have cleartext traffic disabled, no live-reload server URL and WebView debugging off. The signing key never appears in logs or chat (Appendix E).
+- **Signing-secret isolation.** `ANDROID_SIGNING_PASSPHRASE` is an environment secret in `android-release`, released only to runs on `main` or a `v*` tag. PR and branch builds, including ones that change Gradle or workflow code, never receive it, so a compromised build script or dependency cannot decrypt the release key. They sign with a fixed, public debug key.
 - Save import is schema-validated.
 - `.env*` stays gitignored. There is no secret in the client, because the game has no backend.
 
@@ -535,7 +539,7 @@ Each phase leaves `main` deployable and CI green, and from phase 1 onward each p
 | Phase | Scope | Exit criteria |
 |---|---|---|
 | **0 Baseline** | Install old dependencies, build today's app, capture reference screenshots (phone and desktop, four themes) into `docs/reference/`, capture v1 save fixtures, run the Phase-0 checklist (§12). | Reference and fixtures committed; checklist answered. |
-| **1 Foundation** | Scaffold (Vite 8, TS 7, Tailwind 4, Biome, Vitest, Playwright, knip, Capacitor and `android/`), CI, Pages deploy, signing-key creation, `CLAUDE.md`, rules, hooks, settings. Ship an empty cosmic shell **as both a web page and a signed APK**. | Shell live on Pages **and installed on the owner's phone from a CI-built APK**; `pnpm check` green in CI and cloud. |
+| **1 Foundation** | Scaffold (Vite 8, TS 7, Tailwind 4, Biome, Vitest, Playwright, knip, Capacitor and `android/`), CI, Pages deploy, signing-key creation, `CLAUDE.md`, rules, hooks, settings. Ship an empty cosmic shell as a web page and as APKs: a debug APK on every PR, and a first signed release APK from `release.yml`. | Shell live on Pages **and installed on the owner's phone from a CI-built release APK**; `pnpm check` green in CI and cloud. |
 | **2 Engine** (test-first) | grid, rng, solver, generator, techniques, grader, hints, validate, audit script, starter pool, golden hashes. | SC3 and SC4 (Node) met; timing targets recorded. |
 | **3 Game + persistence** | Reducer, scoring, power-ups, notes, undo/redo, achievements, profile, store, schema, migration, export/import. | Every D-defect test green; SC5 met. |
 | **4 UI** | Board, pad, HUD, Cosmos, dialogs, tabs, themes, accessibility, worker wiring. Parity with the reference screenshots. | axe clean; visual snapshots accepted. |
@@ -554,7 +558,7 @@ The owner can ask for a single plan instead.
 
 **Owner one-time steps:**
 1. Set Pages → Source to "GitHub Actions" if it is not already.
-2. Add the repository secret `ANDROID_SIGNING_PASSPHRASE` (a long random string, also saved in a password manager) and run the key-creation workflow once.
+2. Create the `android-release` environment (deployment branches and tags limited to `main` and `v*`), add the environment secret `ANDROID_SIGNING_PASSPHRASE` (a long random string, also saved in a password manager), and run the key-creation workflow once.
 3. On your phone, allow your browser or file manager to "Install unknown apps".
 4. Optionally install the Claude GitHub App and add a secret for `@claude`.
 5. Optionally allow `dl.google.com` in the environment's Network access so Claude can build APKs inside a session.
@@ -566,9 +570,9 @@ The owner can ask for a single plan instead.
 | Risk | Mitigation |
 |---|---|
 | New toolchain (TS 7, Vite 8, Biome) breaks in combination. | Phase-1 smoke test, pinned versions, and the TS 6 + ESLint 9 fallback (§8.1). |
-| Expert generation is slow. | Worker, pre-generation, rating-window budget with best-in-tier fallback, starter pool. |
+| Expert generation is slow. | Worker, pre-generation, a deterministic work budget with best-in-tier fallback, starter pool. |
 | The look drifts from today's. | Reference screenshots in phase 0; visual snapshots; token extraction from the original CSS. |
-| Daily puzzle differs across engines. | Integer-only RNG and math; golden hashes; a cross-browser e2e test in CI. |
+| Daily puzzle differs across engines. | Integer-only RNG and math, work-count budgets with no clock in the engine, golden hashes, and a cross-browser e2e test in CI. |
 | Local-only data is lost. | Autosave, corruption quarantine, export/import, read-only legacy import. |
 | Visual snapshot churn between environments. | Tolerance threshold; CI is the baseline source; cloud runs treat visual diffs as warnings unless updating. |
 | Scope is large. | Phased delivery; each phase deployable; YAGNI enforced by the non-goals and knip. |
@@ -578,6 +582,7 @@ The owner can ask for a single plan instead.
 | Emulator tests are slow or flaky. | They run on `main`, tags and labelled PRs only, with one retry, and the smoke test checks markers rather than pixels. |
 | WebView performance on low-end phones. | Few `backdrop-filter` surfaces; a performance budget checked in the smoke test; reduced motion honoured. |
 | Capacitor ecosystem packages go stale (for example `@capacitor/assets`, last published 2024-03). | Use only first-party 8.x plugins and generate Android icons with our own script. |
+| A branch or PR build exfiltrates the signing passphrase (for example through changed Gradle code or a compromised dependency). | The passphrase is an environment secret limited to `main` and `v*` tags, and PR builds use a public debug key (Appendix E). Phase 0 verifies the repository supports environment rules; the fallback is §12 item 16. |
 
 ## 12. Phase-0 verification checklist
 
@@ -598,6 +603,7 @@ These are facts to confirm by running things, with no decisions left open.
 13. `@capacitor/assets` (last published 2024-03) either works with Capacitor 8 or is replaced by our own icon script.
 14. Informational: whether a Docker daemon can be started in the cloud container (the client is installed; no daemon is running).
 15. Optional: after the owner allows `dl.google.com`, `scripts/android-sdk-setup.sh` installs the SDK and `android:debug` builds inside a session.
+16. The repository (its visibility and plan) supports environment deployment-branch and tag rules for `android-release`. If it does not, the fallback is a repository secret read only by workflows that guard on `github.ref == 'refs/heads/main'` or a `v*` tag, plus branch protection on `main`. The residual risk (anyone with write access can alter a workflow on a branch) is then recorded in `docs/android.md`.
 
 ## Appendix A — Legacy save mapping (v1 → v2)
 
@@ -627,7 +633,7 @@ Numbers are clamped to sane ranges. Legacy keys are left in place after import.
 | 10 | XY-Wing | Expert |
 | 11 | Swordfish | Expert |
 
-A puzzle's tier is the highest rung its canonical solve (easiest-technique-first) needs. Rating weights, per-level rating windows and generation budgets live in `src/game/levels.ts` and are tuned with `audit:puzzles` evidence in phase 2.
+A puzzle's tier is the highest rung its canonical solve (easiest-technique-first) needs. Rating weights, per-level rating windows and generation work budgets live in `src/game/levels.ts` and are tuned with `audit:puzzles` evidence in phase 2.
 
 ## Appendix C — Achievements
 
@@ -689,17 +695,17 @@ A puzzle's tier is the highest rung its canonical solve (easiest-technique-first
 - No `INTERNET` permission if §12 item 9 passes.
 - `android:allowBackup=true`, with `dataExtractionRules` and `fullBackupContent` including the Capacitor Preferences file (confirmed in phase 1) and excluding caches.
 - `minSdk 24`, `compileSdk` and `targetSdk` 36, a universal APK with v2 and v3 signatures, and no `server.url` in the Capacitor config.
-- No `applicationIdSuffix` on debug builds, so any build installs over any other.
+- Debug builds use `applicationIdSuffix ".debug"`, the label "Cosmic Sudoku (debug)" and a fixed, committed debug keystore. They install beside the release app, never over it, and never touch release signing material.
 
 **Signing key creation (once)**
-1. The owner adds the repository secret `ANDROID_SIGNING_PASSPHRASE`: a long random string saved in a password manager.
-2. The owner runs `android-keygen.yml` (manual). It creates a PKCS12 keystore with `keytool` (RSA 4096, 10,000-day validity) using random generated passwords. It bundles the keystore and passwords into one archive and encrypts it with `openssl enc -aes-256-cbc -pbkdf2` using the passphrase. It then pushes a branch, `chore/android-signing-key`, containing only the encrypted file `android/signing/release.enc`. Generated values are masked in the logs and never printed.
+1. The owner creates the `android-release` environment (deployment branches and tags limited to `main` and `v*`) and adds the environment secret `ANDROID_SIGNING_PASSPHRASE`: a long random string saved in a password manager.
+2. The owner runs `android-keygen.yml` (manual, from `main`, in the `android-release` environment). It creates a PKCS12 keystore with `keytool` (RSA 4096, 10,000-day validity) using random generated passwords. It bundles the keystore and passwords into one archive and encrypts it with `openssl enc -aes-256-cbc -pbkdf2` using the passphrase. It then pushes a branch, `chore/android-signing-key`, containing only the encrypted file `android/signing/release.enc`. Generated values are masked in the logs and never printed.
 3. After that branch is merged, every build decrypts the file inside the runner with the secret. Exact cipher parameters are fixed in the plan.
-4. Debug and release builds use the same key whenever the secret is available. GitHub withholds secrets from fork PRs, so fork builds use an ordinary debug key.
+4. Only `release.yml` and `android-keygen.yml` reference the `android-release` environment, and the environment releases its secret only to runs on `main` or a `v*` tag. A PR or branch build, including one that changes Gradle or workflow code, never receives the passphrase, so it cannot decrypt the key. The encrypted file alone is useless without the passphrase.
 
 **If the key is lost.** If the passphrase or the encrypted file is lost, the key cannot be recovered. New APKs would need a different key and could not update installed copies; the owner would uninstall and reinstall. Auto Backup and Export protect progress. `docs/android.md` explains how to back up the passphrase.
 
-**Release flow.** The owner, or the `/release` skill, dispatches `release.yml` with a `version`. The workflow:
+**Release flow.** The owner, or the `/release` skill, dispatches `release.yml` with a `version`. The workflow runs in the `android-release` environment and:
 1. Checks out the commit and runs `check:fast`.
 2. Runs `build:native` and `cap sync android`.
 3. Decrypts the key and runs `./gradlew assembleRelease`.
