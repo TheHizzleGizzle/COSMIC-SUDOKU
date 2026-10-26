@@ -419,9 +419,9 @@ This section applies to the web build only. The APK bundles all of its assets, s
 - **Back button:** closes the topmost dialog, then returns to the Play tab. From Play it minimises the app instead of exiting, which the autosave makes safe.
 - **Lifecycle:** when the app goes to the background the game pauses and autosaves. On return the clock resumes only if the Play screen shows a puzzle in progress. A killed process resumes from the autosave.
 - **Haptics** (a Settings toggle, on by default): a warning pulse on a mistake, a light tick on power-up use, and a success pattern on a win.
-- **Minimum WebView:** the design relies on modern CSS (Tailwind 4, `<dialog>`, the Popover API, `@starting-style`), but Capacitor's own default floor is Chrome 60. Phase 1 audits the CSS features actually used and sets `android.minWebViewVersion` accordingly (expected around Chrome 117). Below that, the app shows a friendly "Update Android System WebView" screen instead of a broken layout.
+- **Minimum WebView:** the design relies on modern CSS (Tailwind 4, `<dialog>`, the Popover API, `@starting-style`), but Capacitor's own default floor is Chrome 60. Phase 1 sets `android.minWebViewVersion` to **117**, matching the in-app guard (`MIN_WEBVIEW_MAJOR` in `src/platform/webview-guard.ts`, kept in step by a test). Below that, the app shows a friendly "Update Android System WebView to keep playing" screen instead of a broken layout, and does not announce `cosmic:ready`. *(Amended in Plan A, Task 6: 117 is fixed now; the CSS audit that could raise it happens as the UI lands.)*
 - **Reduced motion:** Android's "Remove animations" setting should surface as `prefers-reduced-motion`. Phase 6 verifies this on a device.
-- **Permissions:** none requested. The `INTERNET` permission is removed from release builds if phase 0 confirms the app boots without it, which makes "fully offline" verifiable from the manifest.
+- **Permissions:** none requested. The main manifest declares no `INTERNET` permission, so the debug APK that the CI smoke test boots is itself the proof that the app runs offline. The release overlay (`android/app/src/release/AndroidManifest.xml`) also removes `INTERNET` with `tools:node="remove"`, in case a library ever merges it in, and the release workflow fails if the signed APK's permission dump lists it. This makes "fully offline" verifiable from the manifest. *(Amended in Plan A, Task 6: the plan only removed it from release builds, which would have left the boot-without-INTERNET question (§12 item 9) unanswered by the debug smoke test.)*
 - **Differences from the web build:** storage adapter, share-sheet export, Back button, haptics, no service worker, and no update prompt (updating means installing a newer APK).
 
 ## 8. Quality, tooling, CI/CD, security
@@ -471,7 +471,7 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
   - The zero-third-party-requests assertion.
   - Visual snapshots of board, win dialog and shop at 390×844 and 1280×800 across themes.
 - **Contrast:** `scripts/check-contrast.ts` asserts AA for every foreground/background token pair per theme. Failing shades are adjusted, not the aesthetic.
-- **Android smoke test** (emulator, CI only; GitHub's Linux runners provide KVM): install the **debug** APK built for the PR or `main`, launch it, wait for the `cosmic:ready` marker in `logcat`, take a screenshot, force-stop it, relaunch it and wait for `cosmic:resumed`. Inside the protected `release.yml`, an extra run installs the previous release asset and updates over it, which checks the signature and `versionCode`. Android lint (`./gradlew lint`) also runs. No extra test framework is needed, because the checks use `adb`.
+- **Android smoke test** (emulator, CI only; GitHub's Linux runners provide KVM): install the **debug** APK built for the PR or `main`, launch it, wait for the `cosmic:ready` marker in `logcat`, take a screenshot, force-stop it, relaunch it and wait for `cosmic:ready` again. (In phase 1 there is no saved game, so the relaunch check is `cosmic:ready` twice; `cosmic:resumed`, emitted when a saved game is restored, arrives with persistence in Plan B and replaces the second marker.) Inside the protected `release.yml`, an extra run installs the previous release asset and updates over it, which checks the signature and `versionCode`. Android lint (`./gradlew lint`) also runs. No extra test framework is needed, because the checks use `adb`.
 - Coverage gates apply to `engine/` and `game/` only.
 
 ### 8.4 CI/CD
@@ -693,7 +693,7 @@ A puzzle's tier is the highest rung its canonical solve (easiest-technique-first
 **Release manifest and Gradle decisions**
 - `android:debuggable=false`, R8 minification and resource shrinking on, `android:usesCleartextTraffic=false`.
 - No `INTERNET` permission if §12 item 9 passes.
-- `android:allowBackup=true`, with `dataExtractionRules` and `fullBackupContent` including the Capacitor Preferences file (confirmed in phase 1) and excluding caches.
+- `android:allowBackup=true`, with `dataExtractionRules` and `fullBackupContent` including the Capacitor Preferences file and excluding caches. Confirmed in phase 1 from the published `@capacitor/preferences` 8.0.1 source: the plugin stores everything in the SharedPreferences group `CapacitorStorage`, i.e. `shared_prefs/CapacitorStorage.xml`, and the rules include exactly that file.
 - `minSdk 24`, `compileSdk` and `targetSdk` 36, a universal APK with v2 and v3 signatures, and no `server.url` in the Capacitor config.
 - Debug builds use `applicationIdSuffix ".debug"`, the label "Cosmic Sudoku (debug)" and a fixed, committed debug keystore. They install beside the release app, never over it, and never touch release signing material.
 

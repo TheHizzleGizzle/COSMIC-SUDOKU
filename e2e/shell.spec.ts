@@ -69,3 +69,34 @@ test('loads without console errors or CSP violations', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   expect(problems).toEqual([]);
 });
+
+const androidWebView = (chrome: string) =>
+  `Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UD1A.230803.041; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/${chrome} Mobile Safari/537.36`;
+
+test.describe('outdated Android WebView (Chrome 100)', () => {
+  test.use({ userAgent: androidWebView('100.0.0.0') });
+
+  test('shows the update screen instead of the game', async ({ page }) => {
+    const logs: string[] = [];
+    page.on('console', (message) => logs.push(message.text()));
+    await page.goto('/');
+    await expect(
+      page.getByRole('heading', { name: 'Update Android System WebView to keep playing' }),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cosmic Sudoku' })).toHaveCount(0);
+    await page.waitForLoadState('networkidle');
+    expect(logs).not.toContain('cosmic:ready');
+  });
+});
+
+test.describe('current Android WebView (Chrome 124)', () => {
+  test.use({ userAgent: androidWebView('124.0.6367.82') });
+
+  test('plays normally', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Cosmic Sudoku' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Update Android System WebView/ })).toHaveCount(
+      0,
+    );
+  });
+});

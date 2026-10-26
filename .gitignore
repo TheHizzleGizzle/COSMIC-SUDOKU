@@ -34,3 +34,14 @@ test-results
 # Environment variables
 .env*
 .env
+
+# Android: synced web assets and generated config are rebuilt by `pnpm android:sync` (android/.gitignore
+# repeats these). Signing material is never committed; the one public debug key is the exception.
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+*.keystore
+*.jks
+*.p12
+!android/app/debug.keystore

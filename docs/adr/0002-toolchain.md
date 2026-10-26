@@ -34,7 +34,9 @@ The layer table was also probed import by import: 21 imports across the six dire
 - **Biome formats Markdown** from 2.6. The specs, plans and README contain hand-aligned tables, so `biome.json` excludes `**/*.md`.
 - **`recommended: true` is deprecated** in favour of `preset: "recommended"`. The config uses `preset`.
 - **`noExportsInTest`** is on by default, so `findForbidden` stays private to its test file instead of being exported.
-- **knip prints configuration hints** for entry globs that match nothing yet (`src/main.tsx`, `e2e/**`, and so on). They are intentional: the globs name files that later tasks add, and the hints disappear as those files arrive. Hints do not fail the run.
+- **knip prints configuration hints** for entry globs that match nothing yet (today `src/content/starter-pool.ts` and `src/game/*.ts`). It also reports entries its own plugins already detect (the Vite and Playwright entry files), which are therefore left out of `knip.json`. They are intentional: the globs name files that later tasks add, and the hints disappear as those files arrive. Hints do not fail the run.
+- **Capacitor 8.5.3 loads `capacitor.config.ts` under TypeScript 7.** `cap add android` read it through Node's native type stripping, so no `capacitor.config.json` fallback was needed. The file therefore uses only erasable syntax (`import type`, no enums).
+- **Gradle cannot run in the cloud container**: the Android Gradle Plugin is served from `dl.google.com`, which the network policy blocks (`maven.google.com` only redirects there). Android builds are verified in CI; locally the invariants in `scripts/android-config.test.ts` pin the Gradle, manifest and backup settings, and every XML file is checked well-formed.
 - TypeScript 7 and Vite 8 installed and type-checked together on the first attempt, so the fallback in spec §8.1 (TypeScript 6 with ESLint 9) was not needed.
 
 ## Consequences
