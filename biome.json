@@ -22,6 +22,7 @@
   "javascript": {
     "formatter": { "quoteStyle": "single", "semicolons": "always" }
   },
+  "css": { "parser": { "tailwindDirectives": true } },
   "assist": {
     "enabled": true,
     "actions": { "source": { "organizeImports": "on" } }

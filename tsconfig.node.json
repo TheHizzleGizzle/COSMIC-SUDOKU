@@ -29,6 +29,5 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "capacitor.config.ts"
-  ],
-  "exclude": ["scripts/**/*.test.ts"]
+  ]
 }

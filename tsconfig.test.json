@@ -21,11 +21,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": [
-    "src/**/*.test.ts",
-    "src/engine/testing/**/*.ts",
-    "src/engine/golden/**/*.json",
-    "scripts/**/*.test.ts"
-  ],
+  "include": ["src/**/*.test.ts", "src/engine/testing/**/*.ts", "src/engine/golden/**/*.json"],
   "references": [{ "path": "./tsconfig.core.json" }]
 }

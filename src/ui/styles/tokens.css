@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Spec §7.2: the original palette, as tokens. `static` emits every variable so
+   base.css (a separate file) can always resolve them with var(). */
+@theme static {
+  --color-space-deep: #0a0a1a;
+  --color-space-mid: #1a1b3a;
+  --color-space-light: #2d3561;
+  --color-cosmic-cyan: #00f5ff;
+  --color-cosmic-pink: #ff6b9d;
+  --color-cosmic-purple: #c471ed;
+  --color-cosmic-gold: #ffd700;
+  --color-meteor: #ff4500;
+  --color-void: #0f0f23;
+}
+
+/* The frosted-glass surface of the original game. Used sparingly:
+   backdrop-filter is costly on low-end phones. */
+@utility glass-tile {
+  background: color-mix(in srgb, white 7%, transparent);
+  border: 1px solid color-mix(in srgb, white 14%, transparent);
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-void) 60%, transparent);
+  backdrop-filter: blur(12px);
+}
