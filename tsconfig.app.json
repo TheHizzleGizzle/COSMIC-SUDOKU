@@ -23,6 +23,5 @@
     "noUnusedParameters": true
   },
   "include": ["src/ui", "src/platform", "src/worker", "src/main.tsx"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx"],
   "references": [{ "path": "./tsconfig.core.json" }]
 }
