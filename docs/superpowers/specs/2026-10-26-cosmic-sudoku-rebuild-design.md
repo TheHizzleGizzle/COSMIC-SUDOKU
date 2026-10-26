@@ -434,7 +434,7 @@ React 19.3 · Vite 8 · `@vitejs/plugin-react` 6 · Tailwind 4.3 (`@tailwindcss/
 
 **Fallback.** If TS 7 or Biome blocks a phase-1 smoke test, drop to TypeScript 6.0.x with ESLint 9 and `typescript-eslint`. This is a tooling swap that does not touch `src/`.
 
-**Runtime support.** `engines.node` is `>=22.12` (the cloud container has Node 22; Vite 8 and Vitest 5 both support it). CI runs Node 22 and 24.
+**Runtime support.** `engines.node` is `>=22.18` for tooling. Node runs `scripts/*.ts` through native type stripping, which is unflagged from 22.18, and Capacitor's CLI loads `capacitor.config.ts` the same way when TypeScript 7 offers no compiler API. Vite 8 and Vitest 5 would run on 22.12, but the scripts and the Capacitor config would not. CI runs Node 22 and 24. *(Amended in Plan A, Task 3: was `>=22.12`.)*
 
 ### 8.2 Scripts
 
@@ -563,7 +563,7 @@ The owner can ask for a single plan instead.
 4. Optionally install the Claude GitHub App and add a secret for `@claude`.
 5. Optionally allow `dl.google.com` in the environment's Network access so Claude can build APKs inside a session.
 
-**Deleted at the end:** the old `src/`, the three workflows, `nixpacks.toml`, `bun.lock`, `package-lock.json`, the SteerCode script, the placeholder icon and manifest, and unused config.
+**Deleted in phase 1:** the old `src/`, the three workflows, `nixpacks.toml`, `bun.lock`, `package-lock.json`, the SteerCode script, the placeholder icon and manifest, and unused config. The new scaffold occupies the same paths, so the old app is removed in its own commit at the start of phase 1 (Plan A, Task 3). It stays recoverable at `46f5c93` and, visually, in `docs/reference/`. *(Amended: this was "at the end", phase 6.)*
 
 ## 11. Risks and mitigations
 

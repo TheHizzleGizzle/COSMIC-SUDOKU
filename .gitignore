@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Test and coverage output
+coverage
+playwright-report
+test-results
+
+# Per-plan scratch (ledgers, briefs, review packages) kept by the executing-plans workflow
+.superpowers/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
