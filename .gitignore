@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Test and coverage output
+coverage
+playwright-report
+test-results
+
+# Per-plan scratch (ledgers, briefs, review packages) kept by the executing-plans workflow
+.superpowers/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -26,3 +34,14 @@ dist-ssr
 # Environment variables
 .env*
 .env
+
+# Android: synced web assets and generated config are rebuilt by `pnpm android:sync` (android/.gitignore
+# repeats these). Signing material is never committed; the one public debug key is the exception.
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+*.keystore
+*.jks
+*.p12
+!android/app/debug.keystore

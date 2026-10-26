@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@6.43.0/schema.json",
+  "entry": [
+    "src/engine/index.ts",
+    "src/content/starter-pool.ts",
+    "src/game/*.ts",
+    "e2e/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx,css}", "scripts/**/*.ts", "e2e/**/*.ts", "*.config.ts"]
+}

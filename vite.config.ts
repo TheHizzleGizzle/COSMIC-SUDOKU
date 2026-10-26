@@ -1,88 +1,43 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "steercode-tagger";
-import { VitePWA } from "vite-plugin-pwa";
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig, type Plugin } from 'vite';
 
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "0.0.0.0",
-    port: 3000,
-    strictPort: true,
-    allowedHosts: [
-      "steercode.dev",
-      "steercode.app",
-      ".e2b.dev",
-      ".e2b-foxtrot.dev"
-    ]
-  },
-  preview: {
-    host: "0.0.0.0",
-    port: 3000,
-    strictPort: true,
-    allowedHosts: [
-      "steercode.dev",
-      "steercode.app",
-      ".e2b.dev",
-      ".e2b-foxtrot.dev"
-    ]
-  },
-  plugins: [
-    react(),
-    mode === 'development'&& componentTagger(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'robots.txt'],
-      manifest: {
-        name: 'Cosmic Sudoku',
-        short_name: 'Sudoku',
-        description: 'A beautiful cosmic-themed Sudoku game with power-ups and animations',
-        theme_color: '#1e293b',
-        background_color: '#0f172a',
-        display: 'standalone',
-        orientation: 'portrait',
-        icons: [
-          {
-            src: '/favicon.ico',
-            sizes: '64x64 32x32 24x24 16x16',
-            type: 'image/x-icon'
-          },
-          {
-            src: '/apple-touch-icon.png',
-            sizes: '180x180',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
-      }
-    })
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+// Production-only Content-Security-Policy (spec §8.5). It is a <meta> tag
+// because the same build is served by GitHub Pages and by the Android WebView,
+// neither of which lets us set headers. Dev mode needs inline scripts for HMR,
+// so the plugin applies to `vite build` only.
+const CSP = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'cosmic-content-security-policy',
+    apply: 'build',
+    transformIndexHtml() {
+      return [
+        {
+          tag: 'meta',
+          attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP },
+          injectTo: 'head-prepend',
+        },
+      ];
     },
-  },
-  build: {
-    sourcemap: true,
-  },
-  base: "./",
-}));
+  };
+}
+
+// `base: './'` keeps asset URLs relative so the same build works on GitHub Pages
+// (served from a sub-path) and inside the Android WebView (served from the app origin).
+export default defineConfig({
+  base: './',
+  plugins: [react(), tailwindcss(), contentSecurityPolicy()],
+});

@@ -1,0 +1,247 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!.superpowers",
+      "!pnpm-lock.yaml",
+      "!**/*.md",
+      "!fixtures/legacy-v1"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": { "quoteStyle": "single", "semicolons": "always" }
+  },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "assist": {
+    "enabled": true,
+    "actions": { "source": { "organizeImports": "on" } }
+  },
+  "linter": {
+    "enabled": true,
+    "domains": { "react": "recommended" },
+    "rules": {
+      "preset": "recommended",
+      "a11y": { "preset": "recommended" },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "useImportType": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/engine/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": "The engine is framework-free (spec §5.1).",
+                  "react-dom": "The engine is framework-free (spec §5.1)."
+                },
+                "patterns": [
+                  {
+                    "group": ["react/**", "react-dom/**", "@capacitor/**"],
+                    "message": "The engine is framework-free (spec §5.1)."
+                  },
+                  {
+                    "group": [
+                      "../**/game",
+                      "../**/game/**",
+                      "../**/persistence",
+                      "../**/persistence/**",
+                      "../**/content",
+                      "../**/content/**",
+                      "../**/platform",
+                      "../**/platform/**",
+                      "../**/worker",
+                      "../**/worker/**",
+                      "../**/ui",
+                      "../**/ui/**"
+                    ],
+                    "message": "The engine sits at the bottom of the layers and imports no other layer."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/game/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": "The game layer is framework-free (spec §5.1).",
+                  "react-dom": "The game layer is framework-free (spec §5.1)."
+                },
+                "patterns": [
+                  {
+                    "group": ["react/**", "react-dom/**", "@capacitor/**"],
+                    "message": "The game layer is framework-free (spec §5.1)."
+                  },
+                  {
+                    "group": [
+                      "../**/persistence",
+                      "../**/persistence/**",
+                      "../**/platform",
+                      "../**/platform/**",
+                      "../**/worker",
+                      "../**/worker/**",
+                      "../**/ui",
+                      "../**/ui/**"
+                    ],
+                    "message": "The game layer imports only the engine and content."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/persistence/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": "Persistence is framework-free (spec §5.1).",
+                  "react-dom": "Persistence is framework-free (spec §5.1)."
+                },
+                "patterns": [
+                  {
+                    "group": ["react/**", "react-dom/**", "@capacitor/**"],
+                    "message": "Capacitor is imported only from src/platform (spec §5.1)."
+                  },
+                  {
+                    "group": [
+                      "../**/platform",
+                      "../**/platform/**",
+                      "../**/worker",
+                      "../**/worker/**",
+                      "../**/ui",
+                      "../**/ui/**"
+                    ],
+                    "message": "Persistence imports only the layers below it."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/content/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": "Content is plain data (spec §5.1).",
+                  "react-dom": "Content is plain data (spec §5.1)."
+                },
+                "patterns": [
+                  {
+                    "group": ["react/**", "react-dom/**", "@capacitor/**"],
+                    "message": "Content is plain data (spec §5.1)."
+                  },
+                  {
+                    "group": [
+                      "../**/game",
+                      "../**/game/**",
+                      "../**/persistence",
+                      "../**/persistence/**",
+                      "../**/platform",
+                      "../**/platform/**",
+                      "../**/worker",
+                      "../**/worker/**",
+                      "../**/ui",
+                      "../**/ui/**"
+                    ],
+                    "message": "Content may depend on the engine only."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/platform/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**/ui", "../**/ui/**"],
+                    "message": "Platform code never imports the UI layer."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/worker/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react": "Workers do not render (spec §5.1).",
+                  "react-dom": "Workers do not render (spec §5.1)."
+                },
+                "patterns": [
+                  {
+                    "group": ["react/**", "react-dom/**"],
+                    "message": "Workers do not render (spec §5.1)."
+                  },
+                  {
+                    "group": ["../**/ui", "../**/ui/**"],
+                    "message": "Workers never import the UI layer."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
