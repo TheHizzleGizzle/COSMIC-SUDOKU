@@ -1,0 +1,162 @@
+{
+  "app_name": "Cosmic Sudoku",
+  "personality": "6 Glass / Luxe (adapted for Gaming / Glassmorphism 2.0)",
+  "personality_one_liner": "A mesmerizing, premium deep-space puzzle experience where layered frosted-glass floating tiles meet soft neon cosmic glows.",
+  "color": {
+    "surface": "#0a0a1a",
+    "onSurface": "#ffffff",
+    "surfaceSecondary": "#1a1b3a",
+    "onSurfaceSecondary": "#e2e8f0",
+    "surfaceTertiary": "#2d3561",
+    "onSurfaceTertiary": "#cbd5e1",
+    "surfaceInverse": "#ffffff",
+    "onSurfaceInverse": "#0a0a1a",
+    "brand": "#00f5ff",
+    "onBrand": "#000000",
+    "brandPrimary": "#00f5ff",
+    "onBrandPrimary": "#000000",
+    "brandSecondary": "#c471ed",
+    "onBrandSecondary": "#ffffff",
+    "brandTertiary": "#ff6b9d",
+    "onBrandTertiary": "#000000",
+    "success": "#00e676",
+    "onSuccess": "#000000",
+    "warning": "#ffd700",
+    "onWarning": "#000000",
+    "error": "#ff4500",
+    "onError": "#ffffff",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "borderStrong": "rgba(255, 255, 255, 0.25)",
+    "divider": "rgba(255, 255, 255, 0.05)",
+    "muted": "rgba(255, 255, 255, 0.5)",
+    "themes_accessibility_guide": {
+      "Classic Cosmos": { "primary": "#00f5ff", "secondary": "#c471ed", "accent": "#ff6b9d", "bgGradient": ["#0a0a1a", "#1a1b3a", "#2d3561"], "playerDigit": "#00e5ee" },
+      "Nebula Dreams": { "primary": "#ff4081", "secondary": "#9c27b0", "accent": "#e91e63", "bgGradient": ["#0d0814", "#201233", "#3a1e5d"], "playerDigit": "#ff6699" },
+      "Aurora Borealis": { "primary": "#00e676", "secondary": "#8bc34a", "accent": "#4caf50", "bgGradient": ["#05110a", "#0b2b1a", "#134d32"], "playerDigit": "#33ff99" },
+      "Galaxy Explorer": { "primary": "#5c6bc0", "secondary": "#9575cd", "accent": "#3f51b5", "bgGradient": ["#080914", "#16193b", "#2a3070"], "playerDigit": "#8c9eff" }
+    }
+  },
+  "typography": {
+    "displayFontFamily": "Nunito-Bold",
+    "textFontFamily": "Nunito-SemiBold",
+    "instructions": "Must use expo-font to load local TTF files for Nunito. Ensure fontVariant: ['tabular-nums'] is applied to the timer, score, and all Sudoku board digits to prevent horizontal jitter during gameplay.",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24,
+      "3xl": 32
+    }
+  },
+  "spacing": {
+    "rule": "Dense gameplay screen requires precise flex spacing. Use gap properties to evenly distribute vertical space between the board, controls, and pad, so it scales down natively without overlapping padding.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "lucide-react-native",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use translucent solid backgrounds (e.g., rgba(30,35,60,0.6)) combined with a 1px soft white border (rgba(255,255,255,0.15)) on Android to fake glass without the massive performance cost of active blur.",
+      "Reserve true expo-blur strictly for non-frequent updates like modal/bottom-sheet backdrops, tab bar background, and full-screen win celebrations.",
+      "Create an 'inner glow' effect on cells by adding a top-border highlight (rgba(255,255,255,0.25)) inside the translucent container."
+    ],
+    "dont's": [
+      "Do NOT use expo-blur on the 81 individual Sudoku cells; it will drop frames significantly on Android during rapid interactions or board shaking.",
+      "Do NOT apply heavy drop shadows on the board; use soft, colored drop-shadows (neon glow style) only on active items like the selected cell or activated power-ups."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-blur",
+      "android": "translucent fill (rgba) + border highlight",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "haptics": {
+    "digit_placed": "impactLight",
+    "digit_cleared": "impactLight",
+    "powerup_used": "impactMedium",
+    "error_made": "notificationError",
+    "level_complete": "notificationSuccess",
+    "undo_redo": "selection"
+  },
+  "screens": [
+    {
+      "name": "Play",
+      "purpose": "The core Sudoku gameplay loop fitting everything in a single, non-scrolling viewport.",
+      "states": {
+        "loading": "Floating glowing 3x3 skeleton grid.",
+        "empty": "N/A - the board always initializes with digits.",
+        "error": "Failed to load specific puzzle - Retry button centered on board area."
+      },
+      "layout": "Root is a SafeAreaView with flex: 1. NO ScrollView.\n1. Top HUD (height: ~48-50): Flex row, justify space-between. Left: Level & difficulty. Center: Timer. Right: Stardust count & Settings gear (icon button).\n2. Board Area (flex-shrink: 0, aspect-ratio: 1, width: 100% minus padding): 9x9 grid. 3x3 subgrids have thicker borders (rgba(255,255,255,0.3)). Cells: given digits are surfaceInverse (White), player digits are brandPrimary (Cyan). Selected cell gets surfaceTertiary bg. Same-digit peers get subtle tint (rgba(0, 245, 255, 0.1)). Mistakes show a red icon overlay + error color tint.\n3. Mascot Bubble (height: ~48): Small flex row, Cosmos avatar (left) with a small speech bubble (right) giving hints/praise.\n4. Control Row (height: ~56): 4 pill/icon buttons (Undo, Redo, Notes toggle, Erase). Notes toggle turns 'on' state to brandTertiary (Pink).\n5. NumPad: Flex container taking remaining space. Use 2 rows (1-5 in first row, 6-9 in second row) to keep touch targets large (≥48x48) and thumb-friendly. Add small count indicators on each digit button.\n6. Power-up Row (height: ~64): Sticky at bottom, above tab bar. 4 large rounded-square buttons with lucide icons and charge badges (Stellar Hint, Cosmic Reveal, Time Freeze, Error Shield)."
+    },
+    {
+      "name": "Daily",
+      "purpose": "Engagement driver through daily unique puzzles and streak tracking.",
+      "states": {
+        "loading": "Centered spinner over a starfield.",
+        "empty": "N/A - Calendar always visible.",
+        "error": "Connection error - 'Cosmos couldn't sync the stargate' + Retry button."
+      },
+      "layout": "Scrollable layout. Header features the current active Streak (flaming star icon). Center: large hero card for 'Today's Puzzle' (shows difficulty, play/continue CTA). Below: A 7-day mini calendar showing completion status (gold stars for done, dim voids for missed). Bottom: List of this month's past puzzles."
+    },
+    {
+      "name": "Stats",
+      "purpose": "Player progression dashboard showcasing lifetime numbers and achievements.",
+      "states": {
+        "loading": "Skeleton grids for the stat blocks.",
+        "empty": "Play a game to start logging cosmic data.",
+        "error": "Failed to load stats."
+      },
+      "layout": "Scrollable. Top: Lifetime highlights (Perfect Games, Global Rank). Middle: Difficulty breakdown cards (Best Time, Avg Time) laid out in a 2-col grid. Below: 8-week Github-style activity heatmap using stardust gold opacity levels. Bottom: Achievements grid (unlocked badges are bright, locked are ghosted)."
+    },
+    {
+      "name": "Shop",
+      "purpose": "A store to spend stardust on power-ups and cosmetic cosmic themes.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "N/A.",
+        "error": "Failed to load store inventory."
+      },
+      "layout": "Scrollable. Top HUD shows current Stardust balance prominently. Section 1: Power-up bundles (pill cards, cost on right). Section 2: Cosmic Themes. A horizontal ScrollView of theme cards. Each theme card shows a mini board preview showcasing its palette. Applied theme has a 'Equipped' glass badge."
+    }
+  ],
+  "images": {
+    "background_space": {
+      "url": "https://images.unsplash.com/photo-1790799012206-ba5277bf4fba?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHxkZWVwJTIwc3BhY2UlMjBnYWxheHklMjBiYWNrZ3JvdW5kJTIwZGFyayUyMG5hdnklMjBpbmRpZ298ZW58MHx8fHwxNzk0NzM3MjMzfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "A smooth gradient shifting from dark deep space navy to a bright stellar light horizon"
+    },
+    "mascot_cosmos": {
+      "url": "https://images.unsplash.com/photo-1620428268482-cf1851a36764?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwxfHxjdXRlJTIwYXN0cm9uYXV0JTIwbWFzY290JTIwM2R8ZW58MHx8fHwxNzk0NzM3MjMzfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "3D metallic cute astronaut figurine sitting on a golden crescent moon, stylized as the Cosmos mascot"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the 'no scroll' constraint for the Play screen. Use flex partitions: `flex: 1` root, constrained fixed heights for HUD/Control/Mascot rows, `aspectRatio: 1` for board, and `flex-grow: 1` for the NumPad taking up the remainder.",
+    "Implement tabular numbers for digits everywhere: inside Nunito text components, use `fontVariant: ['tabular-nums']` to stop digits (and the timer!) from shifting horizontally.",
+    "Enforce Android blur restrictions: DO NOT use `expo-blur` on the 81 Sudoku cells. The framerate will crater. Use the specified 'translucent-fill + border + inner highlight' technique via standard Views for the glass tile look.",
+    "In the Game board, a Cell's given digit must be pure #ffffff, and the user-entered digit must use the active theme's player digit color (e.g., #00f5ff). Include a quiet note grid state showing tiny muted gray numbers for draft inputs.",
+    "Make heavy use of exact theme tokens for highlighting: Selected Cell Row/Col gets very low opacity primary tint (e.g. rgba(0,245,255,0.05)), Selected Cell gets strong highlighting (rgba(0,245,255, 0.2)), and conflicts get a bright red border/icon alert (#ff4500) over the cell."
+  ]
+}

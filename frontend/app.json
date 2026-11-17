@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Cosmic Sudoku",
+    "slug": "cosmic-sudoku",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "cosmicsudoku",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0a1a",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "io.github.thehizzlegizzle.cosmicsudoku"
+    },
+    "android": {
+      "package": "io.github.thehizzlegizzle.cosmicsudoku",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0a0a1a"
+      },
+      "permissions": ["VIBRATE"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0a0a1a"
+        }
+      ],
+      "expo-font",
+      "@react-native-vector-icons/lucide"
+    ]
+  }
+}
