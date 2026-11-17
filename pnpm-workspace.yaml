@@ -1,0 +1,7 @@
+# pnpm settings (pnpm 12). Docs: docs/phase0-findings.md §2.
+# Delay brand-new releases by one day (minutes), a supply-chain safeguard.
+minimumReleaseAge: 1440
+
+# Dependency install scripts are blocked unless listed here. Keep this list
+# limited to packages whose install scripts the lockfile truly needs.
+allowBuilds: {}

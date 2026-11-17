@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- The app is fully offline. Strip INTERNET from the release build even if a
+         library's manifest ever merges it in; the release workflow also dumps the
+         permissions of the signed APK and fails if INTERNET is listed. -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+</manifest>
